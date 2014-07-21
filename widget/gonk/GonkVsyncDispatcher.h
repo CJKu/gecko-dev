@@ -187,6 +187,8 @@ private:
   int32_t mFrameNumber;
 
   bool mEnableVsyncNotification;
+
+  bool mPrintLog;
 };
 
 } // namespace mozilla

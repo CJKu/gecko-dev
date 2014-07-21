@@ -5,16 +5,17 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "GonkVsyncDispatcher.h"
-
 #include "mozilla/layers/VsyncEventParent.h"
 #include "mozilla/layers/VsyncEventChild.h"
 #include "mozilla/layers/CompositorParent.h"
 #include "mozilla/StaticPtr.h"
+#include "mozilla/VsyncDispatcherUtils.h"
 #include "base/thread.h"
 #include "HwcComposer2D.h"
 #include "nsThreadUtils.h"
 #include "nsRefreshDriver.h"
 #include "nsAppShell.h"
+#include "GeckoProfiler.h"
 
 //#define DEBUG_VSYNC
 #ifdef DEBUG_VSYNC
@@ -37,6 +38,9 @@
 namespace mozilla {
 
 using namespace layers;
+
+const VsyncLogType LOG_TYPE = VSYNC_LOG_ALL;
+const int LOG_NUM = 300;
 
 base::Thread* sVsyncDispatchThread = nullptr;
 MessageLoop* sVsyncDispatchMessageLoop = nullptr;
@@ -127,8 +131,9 @@ GonkVsyncDispatcher::GonkVsyncDispatcher()
   , mInputMonitor("vsync main thread input monitor")
   , mEnableInputDispatchMutex("input dispatcher flag mutex")
   , mVsyncListenerMutex("vsync listener list mutex")
-  , mEnableVsyncNotification(false)
   , mFrameNumber(0)
+  , mEnableVsyncNotification(false)
+  , mPrintLog(false)
 {
 }
 
@@ -380,28 +385,51 @@ GonkVsyncDispatcher::NotifyInputEventProcessed()
     inputLock.Notify();
   }
 
-//  //schedule composition here to reduce the compositor latency
-//#ifdef ENABLE_COMPOSITOR_NOTIFY
-//  //2. compose
-//  Compose(VsyncData(0));
-//#endif
+  //TODO:
+  //schedule composition here to reduce the compositor latency
 }
 
 void
 GonkVsyncDispatcher::DispatchVsync(const VsyncData& aVsyncData)
 {
+  PROFILER_LABEL("GonkVsyncDispatcher", "DispatchVsync",
+            js::ProfileEntry::Category::GRAPHICS);
+
+  mPrintLog = !(aVsyncData.frameNumber() % (LOG_NUM+30));
+
 #ifdef ENABLE_INPUTDISPATCHER_NOTIFY
   //1. input
   if (EnableInputDispatch) {
+    /*
     nsCOMPtr<nsIRunnable> mainThreadInputTask =
         NS_NewRunnableMethodWithArg<const VsyncData&>(this,
                                                       &GonkVsyncDispatcher::InputEventDispatch,
                                                       aVsyncData);
+    */
+    nsCOMPtr<nsPrintableCancelableRunnable> mainThreadInputTask =
+        NewNSVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
+                                                         aVsyncData.frameNumber(),
+                                                         "bignose input",
+                                                         this,
+                                                         &GonkVsyncDispatcher::InputEventDispatch,
+                                                         aVsyncData);
+
     //block vsync event passing until main thread input module updated
     MonitorAutoLock inputLock(mInputMonitor);
 
     NS_DispatchToMainThread(mainThreadInputTask);
+
     inputLock.Wait(PR_MillisecondsToInterval(4));
+
+    static VsyncLatencyLogger<LOG_NUM> inputMonitorLogger;
+    int32_t diffTime = base::TimeTicks::HighResNow().ToInternalValue() - aVsyncData.timeStamp();
+    if(diffTime>5000){
+      //printf_stderr("bignose monitor timeout,%d",diffTime);
+    }
+    inputMonitorLogger.Update(diffTime, aVsyncData.frameNumber(), 0);
+    if (mPrintLog) {
+      inputMonitorLogger.Print("bignose monitor");
+    }
   }
 #endif
 
@@ -415,10 +443,22 @@ GonkVsyncDispatcher::DispatchVsync(const VsyncData& aVsyncData)
   NotifyVsyncEventChild(aVsyncData);
 
   //4. current process tick
+  /*
   nsCOMPtr<nsIRunnable> mainThreadTickTask =
       NS_NewRunnableMethodWithArg<const VsyncData&>(this,
                                                     &GonkVsyncDispatcher::Tick,
                                                     aVsyncData);
+  */
+  nsCOMPtr<nsPrintableCancelableRunnable> mainThreadTickTask =
+      NewNSVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
+                                                       aVsyncData.frameNumber(),
+                                                       "bignose tick",
+                                                       this,
+                                                       &GonkVsyncDispatcher::Tick,
+                                                       aVsyncData);
+  if (mPrintLog) {
+    mainThreadTickTask->Print();
+  }
   NS_DispatchToMainThread(mainThreadTickTask);
 #endif
 }
@@ -441,11 +481,22 @@ GonkVsyncDispatcher::Compose(const VsyncData& aVsyncData)
   // period.
   for (CompositorList::size_type i = 0; i < mCompositorList.Length(); i++) {
     layers::CompositorParent *compositor = mCompositorList[i];
-    // TODO: need to change behavior of ScheduleComposition(). No Delay, fire
-    // Composit ASAP.
+    /*
     CompositorParent::CompositorLoop()->PostTask(FROM_HERE,
                                         NewRunnableMethod(compositor,
                                         &CompositorParent::VsyncComposition));
+    */
+
+    PrintableCancelableTask* composeTask =
+        NewVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
+                                                       aVsyncData.frameNumber(),
+                                                       "bignose compositor",
+                                                       compositor,
+                                                       &CompositorParent::VsyncComposition);
+    if (mPrintLog) {
+      composeTask->Print();
+    }
+    CompositorParent::CompositorLoop()->PostTask(FROM_HERE, composeTask);
   }
 }
 
