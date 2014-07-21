@@ -443,7 +443,9 @@ GonkVsyncDispatcher::Compose(const VsyncData& aVsyncData)
     layers::CompositorParent *compositor = mCompositorList[i];
     // TODO: need to change behavior of ScheduleComposition(). No Delay, fire
     // Composit ASAP.
-    compositor->ScheduleRenderOnCompositorThread();
+    CompositorParent::CompositorLoop()->PostTask(FROM_HERE,
+                                        NewRunnableMethod(compositor,
+                                        &CompositorParent::VsyncComposition));
   }
 }
 

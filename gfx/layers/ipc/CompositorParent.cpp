@@ -54,6 +54,10 @@
 #include "mozilla/Hal.h"
 #include "mozilla/HalTypes.h"
 #include "mozilla/StaticPtr.h"
+#include "mozilla/Preferences.h"
+#ifdef MOZ_WIDGET_GONK
+#include "GonkVsyncDispatcher.h"
+#endif
 
 namespace mozilla {
 namespace layers {
@@ -218,6 +222,8 @@ CompositorParent::CompositorParent(nsIWidget* aWidget,
   , mOverrideComposeReadiness(false)
   , mForceCompositionTask(nullptr)
   , mCompositorThreadHolder(sCompositorThreadHolder)
+  , mEnableVsyncDispatch(false)
+  , mNeedVsyncCompose(false)
 {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(CompositorThread(),
@@ -236,6 +242,8 @@ CompositorParent::CompositorParent(nsIWidget* aWidget,
   sIndirectLayerTrees[mRootLayerTreeID].mParent = this;
 
   mApzcTreeManager = new APZCTreeManager();
+  
+  mEnableVsyncDispatch = Preferences::GetBool("gfx.hw-vsync", false);
 }
 
 bool
@@ -413,7 +421,6 @@ CompositorParent::ActorDestroy(ActorDestroyReason why)
   }
 }
 
-
 void
 CompositorParent::ScheduleRenderOnCompositorThread()
 {
@@ -584,35 +591,69 @@ CalculateCompositionFrameRate()
 void
 CompositorParent::ScheduleComposition()
 {
-  if (mCurrentCompositeTask || mPaused) {
-    return;
+  MOZ_RELEASE_ASSERT(IsInCompositorThread(),
+      "ScheduleComposition can only be called on the compositor thread");
+
+  if (mEnableVsyncDispatch) {
+    if (mNeedVsyncCompose || mPaused) {
+      return;
+    }
+
+    mNeedVsyncCompose = true;
+    //register compositer to vsync dispatcher
+#ifdef MOZ_WIDGET_GONK
+    GonkVsyncDispatcher::GetInstance()->RegisterCompositer(this);
+#endif
   }
+  else {
+    if (mCurrentCompositeTask || mPaused) {
+      return;
+    }
 
-  bool initialComposition = mLastCompose.IsNull();
-  TimeDuration delta;
-  if (!initialComposition)
-    delta = TimeStamp::Now() - mLastCompose;
+    bool initialComposition = mLastCompose.IsNull();
+    TimeDuration delta;
+    if (!initialComposition)
+      delta = TimeStamp::Now() - mLastCompose;
 
-  int32_t rate = CalculateCompositionFrameRate();
+    int32_t rate = CalculateCompositionFrameRate();
 
-  // If rate == 0 (ASAP mode), minFrameDelta must be 0 so there's no delay.
-  TimeDuration minFrameDelta = TimeDuration::FromMilliseconds(
-    rate == 0 ? 0.0 : std::max(0.0, 1000.0 / rate));
+    // If rate == 0 (ASAP mode), minFrameDelta must be 0 so there's no delay.
+    TimeDuration minFrameDelta = TimeDuration::FromMilliseconds(
+      rate == 0 ? 0.0 : std::max(0.0, 1000.0 / rate));
 
 
-  mCurrentCompositeTask = NewRunnableMethod(this, &CompositorParent::CompositeCallback);
+    mCurrentCompositeTask = NewRunnableMethod(this, &CompositorParent::CompositeCallback);
 
-  if (!initialComposition && delta < minFrameDelta) {
-    TimeDuration delay = minFrameDelta - delta;
+    if (!initialComposition && delta < minFrameDelta) {
+      TimeDuration delay = minFrameDelta - delta;
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
-    mExpectedComposeStartTime = TimeStamp::Now() + delay;
+      mExpectedComposeStartTime = TimeStamp::Now() + delay;
 #endif
-    ScheduleTask(mCurrentCompositeTask, delay.ToMilliseconds());
-  } else {
+      ScheduleTask(mCurrentCompositeTask, delay.ToMilliseconds());
+    } else {
 #ifdef COMPOSITOR_PERFORMANCE_WARNING
-    mExpectedComposeStartTime = TimeStamp::Now();
+      mExpectedComposeStartTime = TimeStamp::Now();
 #endif
-    ScheduleTask(mCurrentCompositeTask, 0);
+      ScheduleTask(mCurrentCompositeTask, 0);
+    }
+  }
+}
+
+void
+CompositorParent::VsyncComposition()
+{
+  MOZ_RELEASE_ASSERT(IsInCompositorThread(),
+      "VsyncComposition can only be called on the compositor thread");
+
+  if (mEnableVsyncDispatch) {
+    mNeedVsyncCompose = false;
+
+    //unregister compositer to vsync dispatcher
+#ifdef MOZ_WIDGET_GONK
+    GonkVsyncDispatcher::GetInstance()->UnregisterCompositer(this);
+#endif
+
+    CompositeCallback();
   }
 }
 

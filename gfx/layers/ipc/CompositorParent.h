@@ -147,6 +147,9 @@ public:
 
   void AsyncRender();
 
+  // only can be called from compositor thread
+  void VsyncComposition();
+
   // Can be called from any thread
   void ScheduleRenderOnCompositorThread();
   void SchedulePauseOnCompositorThread();
@@ -336,6 +339,10 @@ protected:
   nsRefPtr<APZCTreeManager> mApzcTreeManager;
 
   nsRefPtr<CompositorThreadHolder> mCompositorThreadHolder;
+
+  bool mNeedVsyncCompose;
+
+  bool mEnableVsyncDispatch;
 
   DISALLOW_EVIL_CONSTRUCTORS(CompositorParent);
 };
