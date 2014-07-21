@@ -465,10 +465,19 @@ public:
 
   virtual ~VsyncRefreshDriverTimer()
   {
-    StopTimer();
   }
 
   virtual void Tick(int64_t aTimestame, int32_t frameNumber) = 0;
+
+protected:
+  virtual void StartTimer() = 0;
+  virtual void StopTimer() = 0;
+  virtual void ScheduleNextTick(TimeStamp aNowTime) = 0;
+
+  void Tick()
+  {
+    RefreshDriverTimer::Tick();
+  }
 };
 
 } //mozilla

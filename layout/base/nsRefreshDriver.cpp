@@ -49,7 +49,12 @@
 #include "nsIFrameRequestCallback.h"
 #include "mozilla/dom/ScriptSettings.h"
 
+#ifdef MOZ_WIDGET_GONK
+#include "GonkVsyncDispatcher.h"
+#endif
+
 using namespace mozilla;
+using namespace mozilla::layers;
 using namespace mozilla::widget;
 
 #ifdef PR_LOGGING
@@ -142,6 +147,50 @@ RefreshDriverTimer::TickDriver(nsRefreshDriver* driver, int64_t jsnow, TimeStamp
   LOG(">> TickDriver: %p (jsnow: %lld)", driver, jsnow);
   driver->Tick(jsnow, now);
 }
+
+#ifdef MOZ_WIDGET_GONK
+class GonkVsyncRefreshDriverTimer MOZ_FINAL :
+    public VsyncRefreshDriverTimer
+{
+public:
+  GonkVsyncRefreshDriverTimer(double aRate)
+    : VsyncRefreshDriverTimer(aRate)
+  {
+  }
+
+  virtual ~GonkVsyncRefreshDriverTimer()
+  {
+    StopTimer();
+  }
+
+private:
+  virtual void StartTimer() MOZ_OVERRIDE
+  {
+    // pretend we just fired, and we schedule the next tick normally
+    mLastFireEpoch = JS_Now();
+    mLastFireTime = TimeStamp::Now();
+
+    mTargetTime = mLastFireTime + mRateDuration;
+
+    GonkVsyncDispatcher::GetInstance()->RegisterRefreshDriverTimer(this);
+  }
+
+  virtual void StopTimer() MOZ_OVERRIDE
+  {
+    GonkVsyncDispatcher::GetInstance()->UnregisterRefreshDriverTimer(this);
+  }
+
+  virtual void  ScheduleNextTick(TimeStamp aNowTime) MOZ_OVERRIDE
+  {
+    // We use hwc to trigger Tick(), so we do nothing in this function
+  }
+
+  virtual void Tick(int64_t aTimestame, int32_t frameNumber) MOZ_OVERRIDE
+  {
+    VsyncRefreshDriverTimer::Tick();
+  }
+};
+#endif
 
 /*
  * A RefreshDriverTimer that uses a nsITimer as the underlying timer.  Note that
@@ -518,7 +567,7 @@ GetFirstFrameDelay(imgIRequest* req)
   return static_cast<uint32_t>(delay);
 }
 
-static PreciseRefreshDriverTimer *sRegularRateTimer = nullptr;
+static RefreshDriverTimer         *sRegularRateTimer = nullptr;
 static InactiveRefreshDriverTimer *sThrottledRateTimer = nullptr;
 
 #ifdef XP_WIN
@@ -623,9 +672,15 @@ nsRefreshDriver::ChooseTimer() const
   if (!sRegularRateTimer) {
     bool isDefault = true;
     double rate = GetRegularTimerInterval(&isDefault);
-#ifdef XP_WIN
+
+#ifdef MOZ_WIDGET_GONK
+    if (Preferences::GetBool("gfx.hw-vsync", true)) {
+      sRegularRateTimer = new GonkVsyncRefreshDriverTimer(rate);
+    }
+#elif defined(XP_WIN)
     if (PreciseRefreshDriverTimerWindowsDwmVsync::IsSupported()) {
-      sRegularRateTimer = new PreciseRefreshDriverTimerWindowsDwmVsync(rate, isDefault);
+      sRegularRateTimer = new PreciseRefreshDriverTimerWindowsDwmVsync(rate,
+          isDefault);
     }
 #endif
     if (!sRegularRateTimer) {
