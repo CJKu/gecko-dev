@@ -42,6 +42,7 @@
 #include "mozilla/Hal.h"
 #include "mozilla/MouseEvents.h"
 #include "mozilla/Mutex.h"
+#include "mozilla/Monitor.h"
 #include "mozilla/Services.h"
 #include "mozilla/TextEvents.h"
 #if ANDROID_VERSION >= 18
@@ -57,6 +58,7 @@
 #include "nsWindow.h"
 #include "OrientationObserver.h"
 #include "GonkMemoryPressureMonitoring.h"
+#include "GonkVsyncDispatcher.h"
 
 #include "android/log.h"
 #include "libui/EventHub.h"
@@ -88,6 +90,7 @@ using namespace mozilla;
 using namespace mozilla::dom;
 using namespace mozilla::services;
 using namespace mozilla::widget;
+using namespace mozilla::layers;
 
 bool gDrawRequest = false;
 static nsAppShell *gAppShell = nullptr;
@@ -109,6 +112,10 @@ nanosecsToMillisecs(nsecs_t nsecs)
 }
 
 namespace mozilla {
+void DispatchPendingEvent()
+{
+    gAppShell->DispatchPendingEvent();
+}
 
 bool ProcessNextEvent()
 {
@@ -213,6 +220,31 @@ sendMouseEvent(uint32_t msg, UserInputData& data, bool forwardToChildren)
     event.mFlags.mNoCrossProcessBoundaryForwarding = !forwardToChildren;
 
     nsWindow::DispatchInputEvent(event);
+}
+
+static void 
+sendMouseEvent(UserInputData& data, bool forwardToChildren)
+{
+     uint32_t msg;
+         
+    switch (data.action & AMOTION_EVENT_ACTION_MASK) {
+        case AMOTION_EVENT_ACTION_DOWN:
+            msg = NS_MOUSE_BUTTON_DOWN;
+            break;
+        case AMOTION_EVENT_ACTION_POINTER_DOWN:
+        case AMOTION_EVENT_ACTION_POINTER_UP:
+        case AMOTION_EVENT_ACTION_MOVE:
+        case AMOTION_EVENT_ACTION_HOVER_MOVE:
+            msg = NS_MOUSE_MOVE;
+            break;
+        case AMOTION_EVENT_ACTION_OUTSIDE:
+        case AMOTION_EVENT_ACTION_CANCEL:
+        case AMOTION_EVENT_ACTION_UP:
+            msg = NS_MOUSE_BUTTON_UP;
+            break;
+    }
+
+    sendMouseEvent(msg, data, forwardToChildren);
 }
 
 static void
@@ -601,6 +633,7 @@ public:
         , mKeyEventsFiltered(false)
     {
       mEnabledUniformityInfo = Preferences::GetBool("layers.uniformity-info", false);
+      mEnableVsyncNotification = Preferences::GetBool("gfx.hw-vsync", true);
     }
 
     virtual void dump(String8& dump);
@@ -633,10 +666,12 @@ public:
             const sp<InputWindowHandle>& inputWindowHandle, bool monitor);
     virtual status_t unregisterInputChannel(const sp<InputChannel>& inputChannel);
 
-
+    void dispatchPendingEvents();
 
 protected:
     virtual ~GeckoInputDispatcher() {}
+    void sendTouchOrMouseEvent(UserInputData& data);
+    UserInputData resample();
 
 private:
     // mQueueLock should generally be locked while using mEventQueue.
@@ -652,6 +687,10 @@ private:
     bool mKeyEventsFiltered;
     BitSet32 mTouchDown;
     bool mEnabledUniformityInfo;
+
+    bool mEnableVsyncNotification;
+    std::vector<UserInputData> mTouchMoveSamples;
+    std::vector<UserInputData> mTouchUpSamples;
 };
 
 // GeckoInputReaderPolicy
@@ -705,6 +744,71 @@ isExpired(const UserInputData& data)
     uint64_t timeNowMs =
         nanosecsToMillisecs(systemTime(SYSTEM_TIME_MONOTONIC));
     return (timeNowMs - data.timeMs) > kInputExpirationThresholdMs;
+}
+
+void GeckoInputDispatcher::dispatchPendingEvents()
+{
+    // Touch up recieve, this stroke is dead.
+    if (!mTouchUpSamples.empty()) {
+        sendTouchOrMouseEvent(mTouchUpSamples[0]);
+        GonkVsyncDispatcher::GetInstance()->UnregisterInputDispatcher();
+        // Discard all pending events.
+        mTouchMoveSamples.clear();
+        mTouchUpSamples.clear();
+    }
+    // Receive mouse move events.
+    else if (!mTouchMoveSamples.empty()) {
+        UserInputData sample = resample();
+        sendTouchOrMouseEvent(sample);
+    }
+}
+
+UserInputData
+GeckoInputDispatcher::resample()
+{
+    // Three conditions
+    // 1. No touch move event - if this happens, either vsync event is too quick 
+    //     or touch event is too slow. Not a normal case.
+    // 2. 1 ~ 2 touch evnets: in the case that vsync refresh rate is 60 FPS and 
+    //     touch dirver refresh rate is 100 FPS. Pretty normal condition.
+    // 3. Move then 3 touch events: if this happens, either vsync event is too 
+    //     slow or  touch event is too quick. Not a normal case.
+    
+    if (mTouchMoveSamples.size() == 1) {
+        return mTouchMoveSamples[0];
+    }
+
+    UserInputData begin = mTouchMoveSamples.front();
+    UserInputData end = mTouchMoveSamples.back();
+    
+    uint64_t now = ns2ms(systemTime(SYSTEM_TIME_MONOTONIC));
+    float timeFactor = (now - begin.timeMs) / static_cast<float>(end.timeMs - begin.timeMs);
+    int strokes = std::min(end.motion.touchCount, begin.motion.touchCount);
+
+    UserInputData sample = end;
+    for (int i = 0; i < strokes; i++) {        
+        const ::Touch& begineTouch = begin.motion.touches[i];
+        const ::Touch& endTouch = end.motion.touches[i]; 
+        float x = begineTouch.coords.getX() + timeFactor * (endTouch.coords.getX() - begineTouch.coords.getX() );
+        float y = begineTouch.coords.getY() + timeFactor * (endTouch.coords.getY() - begineTouch.coords.getY() );
+         
+        sample.motion.touches[i].coords.setAxisValue(AMOTION_EVENT_AXIS_X, x);
+        sample.motion.touches[i].coords.setAxisValue(AMOTION_EVENT_AXIS_Y, y);
+    }
+    mTouchMoveSamples.clear();
+
+    // Push the last move event back to pending buffer for the next vsync notification.
+    mTouchMoveSamples.push_back(end);
+    return sample;
+}
+
+void GeckoInputDispatcher::sendTouchOrMouseEvent(UserInputData& data)
+{
+    bool captured;
+    nsEventStatus status = sendTouchEvent(data, &captured);
+    if (captured)
+        return;
+    sendMouseEvent(data, status != nsEventStatus_eConsumeNoDefault);
 }
 
 void
@@ -762,6 +866,24 @@ GeckoInputDispatcher::dispatchOnce()
 
         nsEventStatus status = nsEventStatus_eIgnore;
         if (action != AMOTION_EVENT_ACTION_HOVER_MOVE) {
+            if (mEnableVsyncNotification) {
+                // TODO: for prototype, I handle only primary touch pointer
+                switch (data.action & AMOTION_EVENT_ACTION_MASK) {
+                case AMOTION_EVENT_ACTION_DOWN:
+                  // Register vsync niotification.
+                  GonkVsyncDispatcher::GetInstance()->RegisterInputDispatcher();
+                  break;
+                case AMOTION_EVENT_ACTION_MOVE:
+                    // Buffering move samples
+                    mTouchMoveSamples.push_back(data);
+                    return;
+                case AMOTION_EVENT_ACTION_UP:
+                    // Buffering up samples
+                    mTouchUpSamples.push_back(data);
+                    return;
+               }
+            }
+
             bool captured;
             status = sendTouchEvent(data, &captured);
             if (mEnabledUniformityInfo) {
@@ -871,6 +993,7 @@ GeckoInputDispatcher::notifyMotion(const NotifyMotionArgs* args)
         else
             mEventQueue.push(data);
     }
+
     gAppShell->NotifyNativeEvent();
 }
 
@@ -1097,6 +1220,12 @@ nsAppShell::ScheduleNativeEventCallback()
 {
     mNativeCallbackRequest = true;
     NotifyEvent();
+}
+
+void 
+nsAppShell::DispatchPendingEvent()
+{
+    mDispatcher->dispatchPendingEvents();
 }
 
 bool

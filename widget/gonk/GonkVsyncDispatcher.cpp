@@ -14,6 +14,7 @@
 #include "HwcComposer2D.h"
 #include "nsThreadUtils.h"
 #include "nsRefreshDriver.h"
+#include "nsAppShell.h"
 
 //#define DEBUG_VSYNC
 #ifdef DEBUG_VSYNC
@@ -428,8 +429,7 @@ GonkVsyncDispatcher::InputEventDispatch(const VsyncData& aVsyncData)
   MOZ_RELEASE_ASSERT(NS_IsMainThread());
   //MOZ_ASSERT(NS_IsMainThread());
 
-  // handle input event here
-  // need to signal mInputMonitor monitor after processing the input event
+  DispatchPendingEvent();
 }
 
 void

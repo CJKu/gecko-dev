@@ -25,6 +25,9 @@
 #include "utils/RefBase.h"
 
 namespace mozilla {
+class Monitor;
+
+void DispatchPendingEvent();
 bool ProcessNextEvent();
 void NotifyEvent();
 }
@@ -73,7 +76,8 @@ public:
     virtual bool ProcessNextNativeEvent(bool maywait);
 
     void NotifyNativeEvent();
-
+    void DispatchPendingEvent();
+    
     static void NotifyScreenInitialized();
     static void NotifyScreenRotation();
 

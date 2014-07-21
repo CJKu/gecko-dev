@@ -50,6 +50,7 @@
 #include "ParentProcessController.h"
 #include "nsThreadUtils.h"
 #include "HwcComposer2D.h"
+#include "GonkVsyncDispatcher.h"
 
 #define LOG(args...)  __android_log_print(ANDROID_LOG_INFO, "Gonk" , ## args)
 #define LOGW(args...) __android_log_print(ANDROID_LOG_WARN, "Gonk", ## args)
@@ -207,6 +208,8 @@ nsWindow::DoDraw(void)
 nsEventStatus
 nsWindow::DispatchInputEvent(WidgetGUIEvent& aEvent, bool* aWasCaptured)
 {
+    GonkVsyncDispatcher::GonkVsyncDispatcherInputProcessingHelper inputHelper;
+
     if (aWasCaptured) {
         *aWasCaptured = false;
     }
@@ -227,6 +230,8 @@ nsWindow::DispatchInputEvent(WidgetGUIEvent& aEvent, bool* aWasCaptured)
             return nsEventStatus_eConsumeNoDefault;
         }
     }
+
+    inputHelper.Notify();
 
     nsEventStatus status;
     gFocusedWindow->DispatchEvent(&aEvent, status);
