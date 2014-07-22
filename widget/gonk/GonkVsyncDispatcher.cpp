@@ -401,12 +401,12 @@ GonkVsyncDispatcher::DispatchVsync(const VsyncData& aVsyncData)
   //1. input
   if (EnableInputDispatch) {
     /*
-    nsCOMPtr<nsIRunnable> mainThreadInputTask =
+    nsRefPtr<nsIRunnable> mainThreadInputTask =
         NS_NewRunnableMethodWithArg<const VsyncData&>(this,
                                                       &GonkVsyncDispatcher::InputEventDispatch,
                                                       aVsyncData);
     */
-    nsCOMPtr<nsPrintableCancelableRunnable> mainThreadInputTask =
+    nsRefPtr<nsPrintableCancelableRunnable> mainThreadInputTask =
         NewNSVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
                                                          aVsyncData.frameNumber(),
                                                          "bignose input",
@@ -444,12 +444,12 @@ GonkVsyncDispatcher::DispatchVsync(const VsyncData& aVsyncData)
 
   //4. current process tick
   /*
-  nsCOMPtr<nsIRunnable> mainThreadTickTask =
+  nsRefPtr<nsIRunnable> mainThreadTickTask =
       NS_NewRunnableMethodWithArg<const VsyncData&>(this,
                                                     &GonkVsyncDispatcher::Tick,
                                                     aVsyncData);
   */
-  nsCOMPtr<nsPrintableCancelableRunnable> mainThreadTickTask =
+  nsRefPtr<nsPrintableCancelableRunnable> mainThreadTickTask =
       NewNSVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
                                                        aVsyncData.frameNumber(),
                                                        "bignose tick",
