@@ -648,11 +648,6 @@ CompositorParent::VsyncComposition()
   if (mEnableVsyncDispatch) {
     mNeedVsyncCompose = false;
 
-    //unregister compositer to vsync dispatcher
-#ifdef MOZ_WIDGET_GONK
-    GonkVsyncDispatcher::GetInstance()->UnregisterCompositer(this);
-#endif
-
     CompositeCallback();
   }
 }

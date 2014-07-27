@@ -45,6 +45,37 @@ const int LOG_NUM = 300;
 base::Thread* sVsyncDispatchThread = nullptr;
 MessageLoop* sVsyncDispatchMessageLoop = nullptr;
 
+class ArrayDataHelper
+{
+public:
+  template <typename Type>
+  static void Add(nsTArray<Type*>* aList, Type* aItem)
+  {
+    //MOZ_RELEASE_ASSERT(!aList->Contains(aItem));
+    //MOZ_ASSERT(!aList->Contains(aItem));
+    if (!aList->Contains(aItem)) {
+      aList->AppendElement(aItem);
+    }
+
+    GonkVsyncDispatcher::GetInstance()->CheckVsyncNotification();
+  }
+
+  template <typename Type>
+  static void Remove(nsTArray<Type*>* aList, Type* aItem)
+  {
+    typedef nsTArray<Type*> ArrayType;
+    typename ArrayType::index_type index = aList->IndexOf(aItem);
+
+    //MOZ_RELEASE_ASSERT(index != ArrayType::NoIndex);
+    //MOZ_ASSERT(index != ArrayType::NoIndex);
+    if (index != ArrayType::NoIndex) {
+      aList->RemoveElementAt(index);
+    }
+
+    GonkVsyncDispatcher::GetInstance()->CheckVsyncNotification();
+  }
+};
+
 static bool
 CreateThread()
 {
@@ -124,13 +155,8 @@ GonkVsyncDispatcher::Shutdown()
 }
 
 GonkVsyncDispatcher::GonkVsyncDispatcher()
-  : mCompositorListMutex("compositor list mutex")
-  , mRefreshDriverTimerListMutex("refresh driver list mutex")
-  , mVsyncEventParentListMutex("vsync parent list mutex")
-  , EnableInputDispatch(false)
+  : EnableInputDispatch(false)
   , mInputMonitor("vsync main thread input monitor")
-  , mEnableInputDispatchMutex("input dispatcher flag mutex")
-  , mVsyncListenerMutex("vsync listener list mutex")
   , mFrameNumber(0)
   , mEnableVsyncNotification(false)
   , mPrintLog(false)
@@ -142,72 +168,6 @@ GonkVsyncDispatcher::~GonkVsyncDispatcher()
 }
 
 void
-GonkVsyncDispatcher::EnableVsyncDispatcher()
-{
-    // todo: handle listener num to enable/disable vsync(compositor parent cound should thread safe)
-//  HwcComposer2D *hwc = HwcComposer2D::GetInstance();
-//
-//  if (hwc->Initialized()){
-//    hwc->EnableVsync(true);
-//  }
-}
-
-void
-GonkVsyncDispatcher::DisableVsyncDispatcher()
-{
-  // todo: handle listener num to enable/disable vsync(compositor parent cound should thread safe)
-//  HwcComposer2D *hwc = HwcComposer2D::GetInstance();
-//
-//  if (hwc->Initialized()){
-//    hwc->EnableVsync(false);
-//  }
-}
-
-int
-GonkVsyncDispatcher::GetRegistedObjectCount() const
-{
-   int count = 0;
-
-   count += mCompositorList.Length();
-   count += mRefreshDriverTimerList.Length();
-   count += mVsyncEventParentList.Length();
-   count += (EnableInputDispatch ? 1 : 0);
-
-   return count;
-}
-
-void
-GonkVsyncDispatcher::CheckVsyncNotification()
-{
-  if (!!GetRegistedObjectCount() !=  mEnableVsyncNotification) {
-    mEnableVsyncNotification = !mEnableVsyncNotification;
-
-    if (XRE_GetProcessType() == GeckoProcessType_Default) {
-      if (mEnableVsyncNotification) {
-        EnableVsyncDispatcher();
-      }
-      else {
-        DisableVsyncDispatcher();
-      }
-    }
-    else{
-      if (mEnableVsyncNotification) {
-        VsyncEventChild::GetSingleton()->SendEnableVsyncEventNotification();
-      }
-      else {
-        VsyncEventChild::GetSingleton()->SendDisableVsyncEventNotification();
-      }
-    }
-  }
-}
-
-MessageLoop*
-GonkVsyncDispatcher::GetMessageLoop()
-{
-  return sVsyncDispatchMessageLoop;
-}
-
-void
 GonkVsyncDispatcher::RegisterInputDispatcher()
 {
   VSYNC_PRINT("RegisterInputDispatcher");
@@ -215,11 +175,6 @@ GonkVsyncDispatcher::RegisterInputDispatcher()
   // This function should be called in chrome process only.
   MOZ_RELEASE_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   //MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
-
-  //MutexAutoLock lock(mHasInputDispatcherMutex);
-  //MutexAutoLock lock(mVsyncListenerMutex);
-
-  //mHasInputDispatcher = true;
 
   GetMessageLoop()->PostTask(FROM_HERE,
                              NewRunnableMethod(this,
@@ -235,11 +190,6 @@ GonkVsyncDispatcher::UnregisterInputDispatcher()
   // This function should be called in chrome process only.
   MOZ_RELEASE_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   //MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
-
-  //MutexAutoLock lock(mHasInputDispatcherMutex);
-  //MutexAutoLock lock(mVsyncListenerMutex);
-
-  //mHasInputDispatcher = false;
 
   GetMessageLoop()->PostTask(FROM_HERE,
                              NewRunnableMethod(this,
@@ -265,30 +215,10 @@ GonkVsyncDispatcher::RegisterCompositer(layers::CompositorParent* aCompositorPar
   MOZ_RELEASE_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
   //MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
 
-  MutexAutoLock lock(mCompositorListMutex);
-  //MutexAutoLock lock(mVsyncListenerMutex);
-
-  ChangeList(&mCompositorList, aCompositorParent, true);
-  //ChangeList(&mCompositorList, aCompositorParent, true);
-}
-
-void
-GonkVsyncDispatcher::UnregisterCompositer(layers::CompositorParent* aCompositorParent)
-{
-  // You should only see this log while screen is updating.
-  // While screen is not update, this log should not appear.
-  // Otherwise, there is a bug in CompositorParent side.
-  VSYNC_PRINT("UnregisterCompositor\n");
-
-  // This function should be called in chrome process only.
-  MOZ_RELEASE_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
-  //MOZ_ASSERT(XRE_GetProcessType() == GeckoProcessType_Default);
-
-  MutexAutoLock lock(mCompositorListMutex);
-  //MutexAutoLock lock(mVsyncListenerMutex);
-
-  ChangeList(&mCompositorList, aCompositorParent, false);
-  //ChangeList(&mCompositorList, aCompositorParent, mVsyncListenerMutex, false);
+  GetMessageLoop()->PostTask(FROM_HERE,
+                             NewRunnableFunction(&ArrayDataHelper::Add<CompositorParent>,
+                             &mCompositorList,
+                             aCompositorParent));
 }
 
 void
@@ -296,15 +226,10 @@ GonkVsyncDispatcher::RegisterRefreshDriverTimer(VsyncRefreshDriverTimer *aRefres
 {
   VSYNC_PRINT("RegisterRefreshDriver");
 
-  //ChangeList(&mRefreshDriverTimerList, aRefreshDriverTimer, mRefreshDriverTimerListMutex, true);
-  //ChangeList(&mRefreshDriverTimerList, aRefreshDriverTimer, mVsyncListenerMutex, true);
-
   GetMessageLoop()->PostTask(FROM_HERE,
-                             NewRunnableMethod(this,
-                             &GonkVsyncDispatcher::ChangeList<VsyncRefreshDriverTimer>,
+                             NewRunnableFunction(&ArrayDataHelper::Add<VsyncRefreshDriverTimer>,
                              &mRefreshDriverTimerList,
-                             aRefreshDriverTimer,
-                             true));
+                             aRefreshDriverTimer));
 }
 
 void
@@ -312,15 +237,10 @@ GonkVsyncDispatcher::UnregisterRefreshDriverTimer(VsyncRefreshDriverTimer *aRefr
 {
   VSYNC_PRINT("UnregisterRefreshDriver");
 
-  //ChangeList(&mRefreshDriverTimerList, aRefreshDriverTimer, mRefreshDriverTimerListMutex, false);
-  //ChangeList(&mRefreshDriverTimerList, aRefreshDriverTimer, mVsyncListenerMutex, false);
-
   GetMessageLoop()->PostTask(FROM_HERE,
-                             NewRunnableMethod(this,
-                             &GonkVsyncDispatcher::ChangeList<VsyncRefreshDriverTimer>,
+                             NewRunnableFunction(&ArrayDataHelper::Remove<VsyncRefreshDriverTimer>,
                              &mRefreshDriverTimerList,
-                             aRefreshDriverTimer,
-                             false));
+                             aRefreshDriverTimer));
 }
 
 void
@@ -328,20 +248,10 @@ GonkVsyncDispatcher::RegisterVsyncEventParent(VsyncEventParent* aVsyncEventParen
 {
   VSYNC_PRINT("RegisterVsyncEventParent");
 
-  // only be called by ipc system, and it ensures be call at vsync dispatch thread.
-  // thus, we don't post a new task to add into the list
-  //MutexAutoLock lock(mVsyncEventParentListMutex);
-  //MutexAutoLock lock(mVsyncListenerMutex);
-
-  //ChangeList(&mVsyncEventParentList, aVsyncEventParent, mVsyncEventParentListMutex, true);
-  //ChangeList(&mVsyncEventParentList, aVsyncEventParent, mVsyncListenerMutex, true);
-
   GetMessageLoop()->PostTask(FROM_HERE,
-                             NewRunnableMethod(this,
-                             &GonkVsyncDispatcher::ChangeList<VsyncEventParent>,
+                             NewRunnableFunction(&ArrayDataHelper::Add<VsyncEventParent>,
                              &mVsyncEventParentList,
-                             aVsyncEventParent,
-                             true));
+                             aVsyncEventParent));
 }
 
 void
@@ -349,20 +259,75 @@ GonkVsyncDispatcher::UnregisterVsyncEventParent(VsyncEventParent* aVsyncEventPar
 {
   VSYNC_PRINT("UnregisterVsyncEventParent");
 
-  // only be called by ipc system, and it ensures be call at vsync dispatch thread.
-  // thus, we don't post a new task to add into the list
-  //MutexAutoLock lock(mVsyncEventParentListMutex);
-  //MutexAutoLock lock(mVsyncListenerMutex);
-
-  //ChangeList(&mVsyncEventParentList, aVsyncEventParent, mVsyncEventParentListMutex, false);
-  //ChangeList(&mVsyncEventParentList, aVsyncEventParent, mVsyncListenerMutex, false);
-
   GetMessageLoop()->PostTask(FROM_HERE,
-                             NewRunnableMethod(this,
-                             &GonkVsyncDispatcher::ChangeList<VsyncEventParent>,
+                             NewRunnableFunction(&ArrayDataHelper::Remove<VsyncEventParent>,
                              &mVsyncEventParentList,
-                             aVsyncEventParent,
-                             false));
+                             aVsyncEventParent));
+}
+
+void
+GonkVsyncDispatcher::EnableVsyncDispatcher()
+{
+  HwcComposer2D *hwc = HwcComposer2D::GetInstance();
+
+  if (hwc->Initialized()){
+    hwc->EnableVsync(true);
+  }
+}
+
+void
+GonkVsyncDispatcher::DisableVsyncDispatcher()
+{
+  HwcComposer2D *hwc = HwcComposer2D::GetInstance();
+
+  if (hwc->Initialized()){
+    hwc->EnableVsync(false);
+  }
+}
+
+int
+GonkVsyncDispatcher::GetRegistedObjectCount() const
+{
+   int count = 0;
+
+   count += mCompositorList.Length();
+   count += mRefreshDriverTimerList.Length();
+   count += mVsyncEventParentList.Length();
+   count += (EnableInputDispatch ? 1 : 0);
+
+   return count;
+}
+
+void
+GonkVsyncDispatcher::CheckVsyncNotification()
+{
+  if (!!GetRegistedObjectCount() !=  mEnableVsyncNotification) {
+    mEnableVsyncNotification = !mEnableVsyncNotification;
+
+    if (XRE_GetProcessType() == GeckoProcessType_Default) {
+      //TODO: enable/disable hwc vsync event when the listener num is zero/non-zero
+      if (mEnableVsyncNotification) {
+        //EnableVsyncDispatcher();
+      }
+      else {
+        //DisableVsyncDispatcher();
+      }
+    }
+    else{
+      if (mEnableVsyncNotification) {
+        VsyncEventChild::GetSingleton()->SendEnableVsyncEventNotification();
+      }
+      else {
+        VsyncEventChild::GetSingleton()->SendDisableVsyncEventNotification();
+      }
+    }
+  }
+}
+
+MessageLoop*
+GonkVsyncDispatcher::GetMessageLoop()
+{
+  return sVsyncDispatchMessageLoop;
 }
 
 void
@@ -443,23 +408,7 @@ GonkVsyncDispatcher::DispatchVsync(const VsyncData& aVsyncData)
   NotifyVsyncEventChild(aVsyncData);
 
   //4. current process tick
-  /*
-  nsRefPtr<nsIRunnable> mainThreadTickTask =
-      NS_NewRunnableMethodWithArg<const VsyncData&>(this,
-                                                    &GonkVsyncDispatcher::Tick,
-                                                    aVsyncData);
-  */
-  nsRefPtr<nsPrintableCancelableRunnable> mainThreadTickTask =
-      NewNSVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
-                                                       aVsyncData.frameNumber(),
-                                                       "bignose tick",
-                                                       this,
-                                                       &GonkVsyncDispatcher::Tick,
-                                                       aVsyncData);
-  if (mPrintLog) {
-    mainThreadTickTask->Print();
-  }
-  NS_DispatchToMainThread(mainThreadTickTask);
+  Tick(aVsyncData);
 #endif
 }
 
@@ -475,18 +424,14 @@ GonkVsyncDispatcher::InputEventDispatch(const VsyncData& aVsyncData)
 void
 GonkVsyncDispatcher::Compose(const VsyncData& aVsyncData)
 {
-  MutexAutoLock lock(mCompositorListMutex);
+  for (CompositorList::size_type i = 0; i < mCompositorList.Length(); ++i) {
+    layers::CompositorParent* compositor = mCompositorList[i];
 
-  // CompositorParent::ScheduleComposition is an async call, assume it takes minor
-  // period.
-  for (CompositorList::size_type i = 0; i < mCompositorList.Length(); i++) {
-    layers::CompositorParent *compositor = mCompositorList[i];
     /*
     CompositorParent::CompositorLoop()->PostTask(FROM_HERE,
                                         NewRunnableMethod(compositor,
                                         &CompositorParent::VsyncComposition));
     */
-
     PrintableCancelableTask* composeTask =
         NewVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
                                                        aVsyncData.frameNumber(),
@@ -496,8 +441,11 @@ GonkVsyncDispatcher::Compose(const VsyncData& aVsyncData)
     if (mPrintLog) {
       composeTask->Print();
     }
+
     CompositorParent::CompositorLoop()->PostTask(FROM_HERE, composeTask);
   }
+
+  mCompositorList.Clear();
 }
 
 void
@@ -513,14 +461,39 @@ GonkVsyncDispatcher::NotifyVsyncEventChild(const VsyncData& aVsyncData)
 void
 GonkVsyncDispatcher::Tick(const VsyncData& aVsyncData)
 {
-  MOZ_RELEASE_ASSERT(NS_IsMainThread());
-  //MOZ_ASSERT(NS_IsMainThread());
-
   // Tick all registered refresh drivers.
   for (RefreshDriverTimerList::size_type i = 0; i < mRefreshDriverTimerList.Length(); i++) {
     VsyncRefreshDriverTimer* timer = mRefreshDriverTimerList[i];
-    timer->Tick(aVsyncData.timeStamp(), aVsyncData.frameNumber());
+
+    /*
+    nsRefPtr<nsPrintableCancelableRunnable> mainThreadTickTask =
+        NewNSVsyncRunnableMethod<VSYNC_LOG_NONE, LOG_NUM>(aVsyncData.timeStamp(),
+                                                         aVsyncData.frameNumber(),
+                                                         "bignose tick",
+                                                         this,
+                                                         &GonkVsyncDispatcher::TickOneRefreshDriverTimer,
+                                                         timer,
+                                                         aVsyncData);
+    */
+    nsRefPtr<nsPrintableCancelableRunnable> mainThreadTickTask =
+        NewNSVsyncRunnableMethod<VSYNC_LOG_ALL, LOG_NUM>(aVsyncData.timeStamp(),
+                                                         aVsyncData.frameNumber(),
+                                                         "bignose tick",
+                                                         this,
+                                                         &GonkVsyncDispatcher::TickOneRefreshDriverTimer,
+                                                         timer,
+                                                         aVsyncData);
+    if (mPrintLog) {
+      mainThreadTickTask->Print();
+    }
+    NS_DispatchToMainThread(mainThreadTickTask);
   }
+}
+
+void
+GonkVsyncDispatcher::TickOneRefreshDriverTimer(VsyncRefreshDriverTimer* aTimer, const VsyncData& aVsyncData)
+{
+  aTimer->Tick(aVsyncData.timeStamp(), aVsyncData.frameNumber());
 }
 
 } // namespace mozilla

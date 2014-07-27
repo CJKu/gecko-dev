@@ -89,19 +89,28 @@ public:
   // tell dispatcher to start other remain vsync event passing
   void NotifyInputEventProcessed();
 
+  // Check the observer number in VsyncDispatcher to enable/disable
+  // vsync event notification.
+  void CheckVsyncNotification();
+
   // Register input dispatcher.
+  // Only can be called at input dispatcher thread.
   void RegisterInputDispatcher();
   void UnregisterInputDispatcher();
 
-  // Register compositor.
+  // Register compositor for composing for one frame.
+  // We need to call register again if we need to compose for next frame.
+  // Can be called at any thread.
   void RegisterCompositer(layers::CompositorParent *aCompositorParent);
-  void UnregisterCompositer(layers::CompositorParent *aCompositorParent);
+  //void UnregisterCompositer(layers::CompositorParent *aCompositorParent);
 
   // Register refresh driver timer.
+  // Only can be called at main thread.
   void RegisterRefreshDriverTimer(VsyncRefreshDriverTimer *aRefreshDriverTimer);
   void UnregisterRefreshDriverTimer(VsyncRefreshDriverTimer *aRefreshDriverTimer);
 
   // Register content process ipc parent
+  // Only can be called at vsync dispatcher thread.
   void RegisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent);
   void UnregisterVsyncEventParent(layers::VsyncEventParent* aVsyncEventParent);
 
@@ -124,65 +133,26 @@ private:
 
   // Tick refresh driver.
   void Tick(const layers::VsyncData& aVsyncData);
+  void TickOneRefreshDriverTimer(VsyncRefreshDriverTimer* aTimer, const layers::VsyncData& aVsyncData);
 
   // Return total registered object number.
   int GetRegistedObjectCount() const;
 
-  // Check the observer number to enable/disable vsync notification
-  void CheckVsyncNotification();
-
-  template <typename Type>
-  void ChangeList(nsTArray<Type*>* aList, Type* aItem, bool aAdd)
-  {
-    typedef nsTArray<Type*> ArrayType;
-
-    if (aAdd) {
-      //MOZ_RELEASE_ASSERT(!aList->Contains(aItem));
-      //MOZ_ASSERT(!aList->Contains(aItem));
-
-      if (!aList->Contains(aItem)) {
-        aList->AppendElement(aItem);
-      }
-    }
-    else {
-      typename ArrayType::index_type index = aList->IndexOf(aItem);
-      //MOZ_RELEASE_ASSERT(index != ArrayType::NoIndex);
-      //MOZ_ASSERT(index != ArrayType::NoIndex);
-
-      if (index != ArrayType::NoIndex) {
-        aList->RemoveElementAt(index);
-      }
-    }
-
-    CheckVsyncNotification();
-    //GetMessageLoop()->PostTask(FROM_HERE,
-    //                           NewRunnableMethod(this,
-    //                           &GonkVsyncDispatcher::CheckVsyncNotification));
-  }
-
 private:
-  // Registered compositors
   typedef nsTArray<layers::CompositorParent*> CompositorList;
   CompositorList mCompositorList;
-  Mutex mCompositorListMutex;
 
   // Registered refresh drivers.
   typedef nsTArray<VsyncRefreshDriverTimer*> RefreshDriverTimerList;
   RefreshDriverTimerList mRefreshDriverTimerList;
-  Mutex mRefreshDriverTimerListMutex;
 
   // Registered vsync ipc parent
   typedef nsTArray<layers::VsyncEventParent*> VsyncEventParentList;
   VsyncEventParentList mVsyncEventParentList;
-  Mutex mVsyncEventParentListMutex;
 
   // Sent vsync event to input dispatcher.
   bool EnableInputDispatch;
-  Mutex mEnableInputDispatchMutex;
-  // Monotir for b2g main thread input event processing
   Monitor mInputMonitor;
-
-  Mutex mVsyncListenerMutex;
 
   int32_t mFrameNumber;
 
