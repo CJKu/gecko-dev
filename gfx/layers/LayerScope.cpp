@@ -281,13 +281,15 @@ public:
                        void* layerRef,
                        GLenum target,
                        GLuint name,
-                       DataSourceSurface* img)
+                       DataSourceSurface* img,
+                       uint32_t aContentID)
         : DebugGLData(Packet::TEXTURE),
           mLayerRef(layerRef),
           mTarget(target),
           mName(name),
           mContextAddress(reinterpret_cast<intptr_t>(cx)),
-          mDatasize(0)
+          mDatasize(0),
+          mContentUUID(aContentID)
     {
         // pre-packing
         // DataSourceSurface may have locked buffer,
@@ -296,22 +298,13 @@ public:
         pack(img);
     }
 
-    const void* GetLayerRef() const { return mLayerRef; }
-    GLuint GetName() const { return mName; }
-    GLenum GetTextureTarget() const { return mTarget; }
-    intptr_t GetContextAddress() const { return mContextAddress; }
-    uint32_t GetDataSize() const { return mDatasize; }
-
     virtual bool Write() MOZ_OVERRIDE {
-        if (!WriteToStream(mPacket))
-            return false;
-        return true;
+        return WriteToStream(mPacket);
     }
 
 private:
     void pack(DataSourceSurface* aImage) {
         mPacket.set_type(mDataType);
-
         TexturePacket* tp = mPacket.mutable_texture();
         tp->set_layerref(reinterpret_cast<uint64_t>(mLayerRef));
         tp->set_name(mName);
@@ -343,11 +336,9 @@ private:
                 NS_WARNING("Couldn't new compressed data.");
                 tp->set_data(aImage->GetData(), mDatasize);
             }
-        } else {
-            tp->set_width(0);
-            tp->set_height(0);
-            tp->set_stride(0);
         }
+
+        tp->set_contentid(mContentUUID);
     }
 
 protected:
@@ -359,6 +350,7 @@ protected:
 
     // Packet data
     Packet mPacket;
+    uint32_t  mContentUUID;
 };
 
 class DebugGLColorData : public DebugGLData {
@@ -447,6 +439,68 @@ protected:
     bool mComposedByHwc;
 };
 
+class ImageContentCache {
+public:
+    struct CacheEntry {
+        TextureSourceOGL *source;
+        uint32_t serial;
+        uint32_t contentID;
+    };
+
+    void Empty() {
+        mCaches.Clear();
+        mContentUUID = 0;
+    }
+
+    CacheEntry* Find(TextureSourceOGL *aSource, uint32_t aSerial) {
+       for (uint32_t i = 0; i < mCaches.Length(); i++) {
+            if (mCaches[i].source == aSource) {
+                return (mCaches[i].serial == aSerial) ? &mCaches[i] : nullptr;
+            }
+        }
+
+        return nullptr;
+    }
+
+    CacheEntry* Cache(TextureSourceOGL *aSource, uint32_t aSerial) {
+        CacheEntry item;
+        item.source = aSource;
+        item.serial = aSerial;
+        item.contentID = advanceUUID();
+
+        mCaches.AppendElement(item);
+
+        return &mCaches.LastElement();
+    }
+
+    static ImageContentCache* GetInstance() {
+        if (!sCachePool) {
+            sCachePool = new ImageContentCache();
+        }
+
+        return sCachePool;
+    }
+
+private:
+    ImageContentCache()
+        : mContentUUID(0)
+    {
+    }
+
+    uint32_t advanceUUID() {
+        return ++mContentUUID;
+    }
+
+private:
+    static StaticAutoPtr<ImageContentCache> sCachePool;
+
+    // We use this attribute to give an unique ID, in a connection session,
+    // for each new content.
+    uint32_t mContentUUID;
+    nsTArray<CacheEntry> mCaches;
+};
+
+StaticAutoPtr<ImageContentCache> ImageContentCache::sCachePool;
 
 class DebugListener : public nsIServerSocketListener
 {
@@ -467,6 +521,8 @@ public:
             return NS_OK;
 
         printf_stderr("*** LayerScope: Accepted connection\n");
+        // Clear Texture pool before session start.
+        ImageContentCache::GetInstance()->Empty();
         WebSocketHelper::GetSocketManager()->AddConnection(aTransport);
         return NS_OK;
     }
@@ -583,6 +639,7 @@ private:
     static void SendTextureSource(GLContext* aGLContext,
                                   void* aLayerRef,
                                   TextureSourceOGL* aSource,
+                                  uint32_t aSerial,
                                   bool aFlipY);
     static void SendTexturedEffect(GLContext* aGLContext,
                                    void* aLayerRef,
@@ -658,6 +715,7 @@ void
 SenderHelper::SendTextureSource(GLContext* aGLContext,
                                 void* aLayerRef,
                                 TextureSourceOGL* aSource,
+                                uint32_t aSerial,
                                 bool aFlipY)
 {
     MOZ_ASSERT(aGLContext);
@@ -683,18 +741,31 @@ SenderHelper::SendTextureSource(GLContext* aGLContext,
         aGLContext->GetUIntegerv(LOCAL_GL_TEXTURE_BINDING_RECTANGLE, &textureId);
     }
 
-    gfx::IntSize size = aSource->GetSize();
+    ImageContentCache::CacheEntry *entry =
+      ImageContentCache::GetInstance()->Find(aSource, aSerial);
+    if (entry) {
+        // Pack image data in only if this image is a new one.
+        // By sending 0 to ReadTextureImage rely upon aSource->BindTexture binding
+        // texture correctly. textureId is used for tracking in DebugGLTextureData.
+        gfx::IntSize size = aSource->GetSize();
 
-    // By sending 0 to ReadTextureImage rely upon aSource->BindTexture binding
-    // texture correctly. textureId is used for tracking in DebugGLTextureData.
-    RefPtr<DataSourceSurface> img =
-        aGLContext->ReadTexImageHelper()->ReadTexImage(0, textureTarget,
-                                                       size,
-                                                       shaderConfig, aFlipY);
-
-    WebSocketHelper::GetSocketManager()->AppendDebugData(
-        new DebugGLTextureData(aGLContext, aLayerRef, textureTarget,
-                               textureId, img));
+        RefPtr<DataSourceSurface> img =
+            aGLContext->ReadTexImageHelper()->ReadTexImage(0,
+                                                           textureTarget,
+                                                           size,
+                                                           shaderConfig,
+                                                           aFlipY);
+        WebSocketHelper::GetSocketManager()->AppendDebugData(
+            new DebugGLTextureData(aGLContext, aLayerRef, textureTarget,
+                                   textureId, img, entry->contentID));
+    } else {
+        // We improve websocket traffic congestion by not senting images
+        // which already send to the viewer.
+        entry = ImageContentCache::GetInstance()->Cache(aSource, aSerial);
+        WebSocketHelper::GetSocketManager()->AppendDebugData(
+            new DebugGLTextureData(aGLContext, aLayerRef, textureTarget,
+                                   textureId, nullptr, entry->contentID));
+    }
 }
 
 void
@@ -703,11 +774,13 @@ SenderHelper::SendTexturedEffect(GLContext* aGLContext,
                                  const TexturedEffect* aEffect)
 {
     TextureSourceOGL* source = aEffect->mTexture->AsSourceOGL();
-    if (!source)
+    DataTextureSource* data = aEffect->mTexture->AsDataTextureSource();
+    if (!source || !data)
         return;
 
     bool flipY = false;
-    SendTextureSource(aGLContext, aLayerRef, source, flipY);
+    uint32_t serial = data->GetUpdateSerial();
+    SendTextureSource(aGLContext, aLayerRef, source, serial, flipY);
 }
 
 void
@@ -715,19 +788,34 @@ SenderHelper::SendYCbCrEffect(GLContext* aGLContext,
                               void* aLayerRef,
                               const EffectYCbCr* aEffect)
 {
-    TextureSource* sourceYCbCr = aEffect->mTexture;
-    if (!sourceYCbCr)
+    TextureSource* source = aEffect->mTexture;
+    if (!source) {
+        printf_stderr("*** LayerScope: SendYCBCR 1.\n");
         return;
-
+     }
     const int Y = 0, Cb = 1, Cr = 2;
-    TextureSourceOGL* sourceY =  sourceYCbCr->GetSubSource(Y)->AsSourceOGL();
-    TextureSourceOGL* sourceCb = sourceYCbCr->GetSubSource(Cb)->AsSourceOGL();
-    TextureSourceOGL* sourceCr = sourceYCbCr->GetSubSource(Cr)->AsSourceOGL();
+    TextureSource* sourceY =  source->GetSubSource(Y);
+    TextureSource* sourceCb = source->GetSubSource(Cb);
+    TextureSource* sourceCr = source->GetSubSource(Cr);
 
     bool flipY = false;
-    SendTextureSource(aGLContext, aLayerRef, sourceY,  flipY);
-    SendTextureSource(aGLContext, aLayerRef, sourceCb, flipY);
-    SendTextureSource(aGLContext, aLayerRef, sourceCr, flipY);
+    DataTextureSource* yData = sourceY->AsDataTextureSource();
+    DataTextureSource* cbData = sourceCb->AsDataTextureSource();
+    DataTextureSource* crData = sourceCr->AsDataTextureSource();
+    if (!yData || !cbData || !crData) {
+        printf_stderr("*** LayerScope: SendYCBCR 2.\n");
+        return;
+    }
+    printf_stderr("*** LayerScope: y=%d; cb=%d; cr=%d.\n",
+        yData->GetUpdateSerial(),
+        cbData->GetUpdateSerial(),
+        crData->GetUpdateSerial());
+    SendTextureSource(aGLContext, aLayerRef, sourceY->AsSourceOGL(),
+                      yData->GetUpdateSerial(),  flipY);
+    SendTextureSource(aGLContext, aLayerRef, sourceCb->AsSourceOGL(),
+                      cbData->GetUpdateSerial(), flipY);
+    SendTextureSource(aGLContext, aLayerRef, sourceCr->AsSourceOGL(),
+                      crData->GetUpdateSerial(), flipY);
 }
 
 void

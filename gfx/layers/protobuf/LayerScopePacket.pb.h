@@ -389,6 +389,13 @@ class TexturePacket : public ::google::protobuf::MessageLite {
   inline ::std::string* mutable_data();
   inline ::std::string* release_data();
   
+  // optional uint32 contentid = 10;
+  inline bool has_contentid() const;
+  inline void clear_contentid();
+  static const int kContentidFieldNumber = 10;
+  inline ::google::protobuf::uint32 contentid() const;
+  inline void set_contentid(::google::protobuf::uint32 value);
+  
   // @@protoc_insertion_point(class_scope:mozilla.layers.layerscope.TexturePacket)
  private:
   inline void set_has_layerref();
@@ -409,6 +416,8 @@ class TexturePacket : public ::google::protobuf::MessageLite {
   inline void clear_has_glcontext();
   inline void set_has_data();
   inline void clear_has_data();
+  inline void set_has_contentid();
+  inline void clear_has_contentid();
   
   ::google::protobuf::uint64 layerref_;
   ::google::protobuf::uint32 width_;
@@ -419,9 +428,10 @@ class TexturePacket : public ::google::protobuf::MessageLite {
   ::google::protobuf::uint32 dataformat_;
   ::google::protobuf::uint64 glcontext_;
   ::std::string* data_;
+  ::google::protobuf::uint32 contentid_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
   
   friend void  protobuf_AddDesc_LayerScopePacket_2eproto();
   friend void protobuf_AssignDesc_LayerScopePacket_2eproto();
@@ -1900,6 +1910,28 @@ inline ::std::string* TexturePacket::release_data() {
     data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
+}
+
+// optional uint32 contentid = 10;
+inline bool TexturePacket::has_contentid() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void TexturePacket::set_has_contentid() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void TexturePacket::clear_has_contentid() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void TexturePacket::clear_contentid() {
+  contentid_ = 0u;
+  clear_has_contentid();
+}
+inline ::google::protobuf::uint32 TexturePacket::contentid() const {
+  return contentid_;
+}
+inline void TexturePacket::set_contentid(::google::protobuf::uint32 value) {
+  set_has_contentid();
+  contentid_ = value;
 }
 
 // -------------------------------------------------------------------

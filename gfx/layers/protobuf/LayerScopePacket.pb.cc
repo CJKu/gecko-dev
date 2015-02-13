@@ -507,6 +507,7 @@ const int TexturePacket::kTargetFieldNumber;
 const int TexturePacket::kDataformatFieldNumber;
 const int TexturePacket::kGlcontextFieldNumber;
 const int TexturePacket::kDataFieldNumber;
+const int TexturePacket::kContentidFieldNumber;
 #endif  // !_MSC_VER
 
 TexturePacket::TexturePacket()
@@ -534,6 +535,7 @@ void TexturePacket::SharedCtor() {
   dataformat_ = 0u;
   glcontext_ = GOOGLE_ULONGLONG(0);
   data_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  contentid_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -581,6 +583,7 @@ void TexturePacket::Clear() {
         data_->clear();
       }
     }
+    contentid_ = 0u;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -728,6 +731,22 @@ bool TexturePacket::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(80)) goto parse_contentid;
+        break;
+      }
+      
+      // optional uint32 contentid = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_contentid:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &contentid_)));
+          set_has_contentid();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -793,6 +812,11 @@ void TexturePacket::SerializeWithCachedSizes(
   if (has_data()) {
     ::google::protobuf::internal::WireFormatLite::WriteBytes(
       9, this->data(), output);
+  }
+  
+  // optional uint32 contentid = 10;
+  if (has_contentid()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(10, this->contentid(), output);
   }
   
 }
@@ -866,6 +890,13 @@ int TexturePacket::ByteSize() const {
           this->data());
     }
     
+    // optional uint32 contentid = 10;
+    if (has_contentid()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->contentid());
+    }
+    
   }
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = total_size;
@@ -910,6 +941,9 @@ void TexturePacket::MergeFrom(const TexturePacket& from) {
     if (from.has_data()) {
       set_data(from.data());
     }
+    if (from.has_contentid()) {
+      set_contentid(from.contentid());
+    }
   }
 }
 
@@ -936,6 +970,7 @@ void TexturePacket::Swap(TexturePacket* other) {
     std::swap(dataformat_, other->dataformat_);
     std::swap(glcontext_, other->glcontext_);
     std::swap(data_, other->data_);
+    std::swap(contentid_, other->contentid_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     std::swap(_cached_size_, other->_cached_size_);
   }
