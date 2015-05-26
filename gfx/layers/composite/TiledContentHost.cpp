@@ -499,7 +499,15 @@ TiledContentHost::RenderTile(const TileHost& aTile,
     return;
   }
 
-  RefPtr<TexturedEffect> effect = CreateTexturedEffect(aTile.mTextureSource, aTile.mTextureSourceOnWhite, aFilter, true);
+  // hacky const_cast.
+  // Change GetRenderState to const member function.
+  auto host = const_cast<TextureHost *>(aTile.mTextureHost.get());
+  RefPtr<TexturedEffect> effect =
+    CreateTexturedEffect(aTile.mTextureSource,
+                         aTile.mTextureSourceOnWhite,
+                         aFilter,
+                         true,
+                         host->GetRenderState());
   if (!effect) {
     return;
   }
