@@ -457,7 +457,7 @@ TiledContentHost::Composite(EffectChain& aEffectChain,
 
 
 void
-TiledContentHost::RenderTile(const TileHost& aTile,
+TiledContentHost::RenderTile(TileHost& aTile,
                              const gfxRGBA* aBackgroundColor,
                              EffectChain& aEffectChain,
                              float aOpacity,
@@ -499,7 +499,12 @@ TiledContentHost::RenderTile(const TileHost& aTile,
     return;
   }
 
-  RefPtr<TexturedEffect> effect = CreateTexturedEffect(aTile.mTextureSource, aTile.mTextureSourceOnWhite, aFilter, true);
+  RefPtr<TexturedEffect> effect =
+    CreateTexturedEffect(aTile.mTextureSource,
+                         aTile.mTextureSourceOnWhite,
+                         aFilter,
+                         true,
+                         aTile.mTextureHost->GetRenderState());
   if (!effect) {
     return;
   }

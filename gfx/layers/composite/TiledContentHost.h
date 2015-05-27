@@ -279,7 +279,7 @@ private:
                          gfx::Matrix4x4 aTransform);
 
   // Renders a single given tile.
-  void RenderTile(const TileHost& aTile,
+  void RenderTile(TileHost& aTile,
                   const gfxRGBA* aBackgroundColor,
                   EffectChain& aEffectChain,
                   float aOpacity,
