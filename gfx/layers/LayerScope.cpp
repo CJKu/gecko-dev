@@ -191,6 +191,8 @@ public:
     gfx::Matrix4x4 mMVMatrix;
     size_t mRects;
     gfx::Rect mLayerRects[4];
+    gfx::Rect mTextureRects[4];
+    std::list<GLuint> mTexIDs;
 };
 
 class ContentMonitor {
@@ -243,6 +245,7 @@ public:
         //  WebSocketManager must be created on the main thread.
         if (NS_IsMainThread()) {
             mWebSocketManager = mozilla::MakeUnique<LayerScopeWebSocketManager>();
+            GetDefaultScale();
         } else {
             // Dispatch creation to main thread, and make sure we
             // dispatch this only once after booting
@@ -289,6 +292,10 @@ public:
         return *mSession;
     }
 
+    float GetPixelScale() const {
+        return mScale;
+    }
+
 private:
     friend class CreateServerSocketRunnable;
     class CreateServerSocketRunnable : public nsRunnable
@@ -301,15 +308,24 @@ private:
         NS_IMETHOD Run() {
             mLayerScopeManager->mWebSocketManager =
                 mozilla::MakeUnique<LayerScopeWebSocketManager>();
+            mLayerScopeManager->GetDefaultScale();
             return NS_OK;
         }
     private:
         LayerScopeManager* mLayerScopeManager;
     };
 
+    void GetDefaultScale() {
+        MOZ_ASSERT(NS_IsMainThread());
+
+        double scale = nsIWidget::DefaultScaleOverride();
+        mScale = (scale <= 0.0) ? 1.0 : scale;
+    }
+
     mozilla::UniquePtr<LayerScopeWebSocketManager> mWebSocketManager;
     mozilla::UniquePtr<DrawSession> mSession;
     mozilla::UniquePtr<ContentMonitor> mContentMonitor;
+    float mScale;
 };
 
 LayerScopeManager gLayerScopeManager;
@@ -366,6 +382,8 @@ public:
 
         FramePacket* fp = packet.mutable_frame();
         fp->set_value(static_cast<uint64_t>(mFrameStamp));
+
+        fp->set_scale(gLayerScopeManager.GetPixelScale());
 
         return WriteToStream(packet);
     }
@@ -623,16 +641,20 @@ public:
                     const gfx::Matrix4x4& aMVMatrix,
                     size_t aRects,
                     const gfx::Rect* aLayerRects,
+                    const gfx::Rect* aTextureRects,
+                    const std::list<GLuint> aTexIDs,
                     void* aLayerRef)
         : DebugGLData(Packet::DRAW),
           mOffsetX(aOffsetX),
           mOffsetY(aOffsetY),
           mMVMatrix(aMVMatrix),
           mRects(aRects),
+          mTexIDs(aTexIDs),
           mLayerRef(reinterpret_cast<uint64_t>(aLayerRef))
     {
         for (size_t i = 0; i < mRects; i++){
             mLayerRects[i] = aLayerRects[i];
+            mTextureRects[i] = aTextureRects[i];
         }
     }
 
@@ -654,11 +676,23 @@ public:
 
         MOZ_ASSERT(mRects > 0 && mRects < 4);
         for (size_t i = 0; i < mRects; i++) {
+            // Vertex
             layerscope::DrawPacket::Rect* pRect = dp->add_layerrect();
             pRect->set_x(mLayerRects[i].x);
             pRect->set_y(mLayerRects[i].y);
             pRect->set_w(mLayerRects[i].width);
             pRect->set_h(mLayerRects[i].height);
+
+            // UV
+            pRect = dp->add_texturerect();
+            pRect->set_x(mTextureRects[i].x);
+            pRect->set_y(mTextureRects[i].y);
+            pRect->set_w(mTextureRects[i].width);
+            pRect->set_h(mTextureRects[i].height);
+        }
+
+        for (std::list<GLuint>::iterator it = mTexIDs.begin(); it != mTexIDs.end(); it++) {
+            dp->add_texids(*it);
         }
 
         return WriteToStream(packet);
@@ -670,6 +704,8 @@ protected:
     gfx::Matrix4x4 mMVMatrix;
     size_t mRects;
     gfx::Rect mLayerRects[4];
+    gfx::Rect mTextureRects[4];
+    std::list<GLuint> mTexIDs;
     uint64_t mLayerRef;
 };
 
@@ -955,6 +991,8 @@ SenderHelper::SendTextureSource(GLContext* aGLContext,
                                aTexID, img));
 
     sTextureIdList.push_back(aTexID);
+    gLayerScopeManager.CurrentSession().mTexIDs.push_back(aTexID);
+
 }
 
 #ifdef MOZ_WIDGET_GONK
@@ -982,6 +1020,8 @@ SenderHelper::SendGraphicBuffer(void* aLayerRef,
     // Transfer ownership to SocketManager.
     gLayerScopeManager.GetSocketManager()->AppendDebugData(package.release());
     sTextureIdList.push_back(aTexID);
+
+    gLayerScopeManager.CurrentSession().mTexIDs.push_back(aTexID);
 
     gLayerScopeManager.GetContentMonitor()->ClearChangedHost(aEffect->mState.mTexture);
     return true;
@@ -1585,7 +1625,8 @@ LayerScope::DrawBegin()
     gLayerScopeManager.NewDrawSession();
 }
 
-void LayerScope::SetRenderOffset(float aX, float aY)
+void
+LayerScope::SetRenderOffset(float aX, float aY)
 {
     if (!CheckSendable()) {
         return;
@@ -1595,7 +1636,8 @@ void LayerScope::SetRenderOffset(float aX, float aY)
     gLayerScopeManager.CurrentSession().mOffsetY = aY;
 }
 
-void LayerScope::SetLayerTransform(const gfx::Matrix4x4& aMatrix)
+void
+LayerScope::SetLayerTransform(const gfx::Matrix4x4& aMatrix)
 {
     if (!CheckSendable()) {
         return;
@@ -1604,7 +1646,10 @@ void LayerScope::SetLayerTransform(const gfx::Matrix4x4& aMatrix)
     gLayerScopeManager.CurrentSession().mMVMatrix = aMatrix;
 }
 
-void LayerScope::SetLayerRects(size_t aRects, const gfx::Rect* aLayerRects)
+void
+LayerScope::SetDrawRects(size_t aRects,
+                         const gfx::Rect* aLayerRects,
+                         const gfx::Rect* aTextureRects)
 {
     if (!CheckSendable()) {
         return;
@@ -1617,6 +1662,7 @@ void LayerScope::SetLayerRects(size_t aRects, const gfx::Rect* aLayerRects)
 
     for (size_t i = 0; i < aRects; i++){
         gLayerScopeManager.CurrentSession().mLayerRects[i] = aLayerRects[i];
+        gLayerScopeManager.CurrentSession().mTextureRects[i] = aTextureRects[i];
     }
 }
 
@@ -1631,17 +1677,20 @@ LayerScope::DrawEnd(gl::GLContext* aGLContext,
         return;
     }
 
-    // 1. Send parameters of draw call, such as uniforms and attributes of
+    // 1. Send textures.
+    SenderHelper::SendEffectChain(aGLContext, aEffectChain, aWidth, aHeight);
+
+    // 2. Send parameters of draw call, such as uniforms and attributes of
     // vertex adnd fragment shader.
     DrawSession& draws = gLayerScopeManager.CurrentSession();
     gLayerScopeManager.GetSocketManager()->AppendDebugData(
         new DebugGLDrawData(draws.mOffsetX, draws.mOffsetY,
                             draws.mMVMatrix, draws.mRects,
                             draws.mLayerRects,
+                            draws.mTextureRects,
+                            draws.mTexIDs,
                             aEffectChain.mLayerRef));
 
-    // 2. Send textures.
-    SenderHelper::SendEffectChain(aGLContext, aEffectChain, aWidth, aHeight);
 }
 
 void
@@ -1721,11 +1770,10 @@ LayerScopeAutoFrame::~LayerScopeAutoFrame()
 void
 LayerScopeAutoFrame::BeginFrame(int64_t aFrameStamp)
 {
-    SenderHelper::ClearTextureIdList();
-
     if (!LayerScope::CheckSendable()) {
         return;
     }
+    SenderHelper::ClearTextureIdList();
 
     gLayerScopeManager.GetSocketManager()->AppendDebugData(
         new DebugGLFrameStatusData(Packet::FRAMESTART, aFrameStamp));
