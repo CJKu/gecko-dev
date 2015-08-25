@@ -21,9 +21,14 @@
 namespace mozilla {
 class ErrorResult;
 
+namespace layers {
+class Image;
+}
+
 namespace dom {
 class Element;
 class ImageData;
+class ImageBitmap;
 } // namespace dom
 
 // Zero is not an integer power of two.
@@ -152,6 +157,9 @@ public:
     void TexImage2D(TexImageTarget texImageTarget, GLint level, GLenum internalFormat,
                     GLenum unpackFormat, GLenum unpackType, dom::Element* elem,
                     ErrorResult* const out_rv);
+    void TexImage2D(TexImageTarget texImageTarget, GLint level, GLenum internalFormat,
+                    GLenum unpackFormat, GLenum unpackType, dom::ImageBitmap& bitmap,
+                    ErrorResult* const out_rv);
 
     void TexImage3D(TexImageTarget target, GLint level, GLenum internalFormat,
                     GLsizei width, GLsizei height, GLsizei depth, GLint border,
@@ -215,6 +223,8 @@ protected:
     bool TexImageFromVideoElement(TexImageTarget texImageTarget, GLint level,
                                   GLenum internalFormat, GLenum unpackFormat,
                                   GLenum unpackType, dom::Element* elem);
+    bool TexImageFromImage(TexImageTarget texImageTarget, GLint level, GLenum internalFormat,
+                           GLenum unpackFormat, GLenum unpackType, layers::Image* srcImage);
 
     // If jsArrayType is MaxTypedArrayViewType, it means no array.
     void TexImage2D_base(TexImageTarget texImageTarget, GLint level,

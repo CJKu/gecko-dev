@@ -679,6 +679,9 @@ interface WebGLRenderingContext {
                     GLenum format, GLenum type, ImageData? pixels);
     [Throws]
     void texImage2D(GLenum target, GLint level, GLenum internalformat,
+                    GLenum format, GLenum type, ImageBitmap pixels);
+    [Throws]
+    void texImage2D(GLenum target, GLint level, GLenum internalformat,
                     GLenum format, GLenum type, HTMLImageElement image); // May throw DOMException
     [Throws]
     void texImage2D(GLenum target, GLint level, GLenum internalformat,

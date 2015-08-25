@@ -144,6 +144,8 @@ protected:
 
   nsCOMPtr<nsIGlobalObject> mParent;
 
+//CJKU : heck!
+public:
   /*
    * The mData is the data buffer of an ImageBitmap, so the mData must not be
    * null.
@@ -159,6 +161,8 @@ protected:
    * buffer.
    */
   nsRefPtr<layers::Image> mData;
+
+protected:
   RefPtr<gfx::SourceSurface> mSurface;
 
   /*

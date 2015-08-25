@@ -40,7 +40,6 @@
 #include "nsIDOMWebGLRenderingContext.h"
 #include "nsIObserver.h"
 
-
 class nsIDocShell;
 
 /*
@@ -95,6 +94,7 @@ class Element;
 class ImageData;
 struct WebGLContextAttributes;
 template<typename> struct Nullable;
+class ImageBitmap;
 } // namespace dom
 
 namespace gfx {
@@ -871,7 +871,9 @@ public:
     void TexImage2D(GLenum texImageTarget, GLint level, GLenum internalFormat,
                     GLenum unpackFormat, GLenum unpackType, dom::Element* elem,
                     ErrorResult* const out_rv);
-
+    void TexImage2D(GLenum texImageTarget, GLint level, GLenum internalFormat,
+                    GLenum format, GLenum type, dom::ImageBitmap& pixels,
+                    ErrorResult& rv);
 
     void TexSubImage2D(GLenum texImageTarget, GLint level, GLint xOffset, GLint yOffset,
                        GLsizei width, GLsizei height, GLenum unpackFormat,

@@ -329,6 +329,23 @@ WebGLContext::TexImage2D(GLenum rawTexImageTarget, GLint level, GLenum internalF
     tex->TexImage2D(texImageTarget, level, internalFormat, unpackFormat, unpackType,
                     imageData, &out_rv);
 }
+void
+WebGLContext::TexImage2D(GLenum rawTexImageTarget, GLint level, GLenum internalFormat,
+                         GLenum unpackFormat, GLenum unpackType,
+                         dom::ImageBitmap& bitmap, ErrorResult& out_rv)
+{
+    TexImageTarget texImageTarget;
+    WebGLTexture* tex;
+    if (!ValidateTexImageTarget(this, rawTexImageTarget, "texImage2D", &texImageTarget,
+                                &tex))
+    {
+        return;
+    }
+
+    tex->TexImage2D(texImageTarget, level, internalFormat, unpackFormat, unpackType,
+                    bitmap, &out_rv);
+}
+
 
 
 //////////////////////////////////////////////////////////////////////////////////////////

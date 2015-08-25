@@ -18,6 +18,8 @@
 #include "WebGLContextUtils.h"
 #include "WebGLFramebuffer.h"
 #include "WebGLTexelConversions.h"
+#include "mozilla/gfx/2D.h"
+#include "ImageBitmap.h"
 
 namespace mozilla {
 
@@ -712,6 +714,41 @@ WebGLTexture::TexImage2D(TexImageTarget texImageTarget, GLint level,
                            res.mIsPremultiplied);
 }
 
+void
+WebGLTexture::TexImage2D(TexImageTarget texImageTarget, GLint level, GLenum internalFormat,
+                        GLenum unpackFormat, GLenum unpackType, dom::ImageBitmap& bitmap,
+                        ErrorResult* const out_rv)
+{
+    layers::Image* srcImage = bitmap.mData;
+
+    if (TexImageFromImage(texImageTarget, level, internalFormat,
+                          unpackFormat, unpackType, srcImage))
+    {
+        return;
+    }
+
+    // Fallback.
+    RefPtr<gfx::SourceSurface> sourceSurface = srcImage->GetAsSourceSurface();
+    RefPtr<gfx::DataSourceSurface> dataSurface = sourceSurface->GetDataSurface();
+    if (!dataSurface)
+    {
+        return;
+    }
+
+    gfx::DataSourceSurface::ScopedMap map(dataSurface, gfx::DataSourceSurface::READ);
+    if (!map.IsMapped())
+    {
+        return;
+    }
+
+    gfx::IntSize size = dataSurface->GetSize();
+    const uint32_t byteLength = map.GetStride() * size.height;
+    return TexImage2D_base(texImageTarget, level, internalFormat, size.width,
+                           size.height, map.GetStride(), 0,
+                           unpackFormat, unpackType, map.GetData(), byteLength,
+                           js::Scalar::MaxTypedArrayViewType,
+                           WebGLTexelFormat::RGBA8, false);
+}
 
 void
 WebGLTexture::TexSubImage2D_base(TexImageTarget texImageTarget, GLint level,
@@ -949,6 +986,15 @@ WebGLTexture::TexImageFromVideoElement(TexImageTarget texImageTarget,
       return false;
     }
 
+    return TexImageFromImage(texImageTarget, level, internalFormat,
+                             unpackFormat, unpackType, srcImage);
+}
+
+bool
+WebGLTexture::TexImageFromImage(TexImageTarget texImageTarget, GLint level,
+                                GLenum internalFormat, GLenum unpackFormat,
+                                GLenum unpackType, layers::Image* srcImage)
+{
     gl::GLContext* gl = mContext->gl;
     gl->MakeCurrent();
 
