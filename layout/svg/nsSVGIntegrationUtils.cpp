@@ -23,6 +23,7 @@
 #include "FrameLayerBuilder.h"
 #include "BasicLayers.h"
 #include "mozilla/gfx/Point.h"
+#include "nsCSSRendering.h"
 
 using namespace mozilla;
 using namespace mozilla::layers;
@@ -153,7 +154,7 @@ nsSVGIntegrationUtils::UsingEffectsForFrame(const nsIFrame* aFrame)
   // painting or hit-testing anyway.
   const nsStyleSVGReset *style = aFrame->StyleSVGReset();
   return (style->HasFilters() ||
-          style->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE || style->mMask);
+          style->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE || style->mMask || (style->mImageCount != 0));
 }
 
 // For non-SVG frames, this gives the offset to the frame's "user space".
@@ -409,6 +410,7 @@ void
 nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
                                               nsIFrame* aFrame,
                                               const nsRect& aDirtyRect,
+                                              const nsRect& aBoaderRect,
                                               nsDisplayListBuilder* aBuilder,
                                               LayerManager *aLayerManager)
 {
@@ -468,7 +470,6 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
   if (!isOK) {
     return; // Some resource is missing. We shouldn't paint anything.
   }
-
   bool isTrivialClip = clipPathFrame ? clipPathFrame->IsTrivial() : true;
 
   DrawTarget* drawTarget = aContext.GetDrawTarget();
@@ -507,14 +508,16 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
     nsLayoutUtils::PointToGfxPoint(offsetToUserSpace,
                                    aFrame->PresContext()->AppUnitsPerDevPixel());
   aContext.SetMatrix(aContext.CurrentMatrix().Translate(devPixelOffsetToUserSpace));
-
   gfxMatrix cssPxToDevPxMatrix = GetCSSPxToDevPxMatrix(aFrame);
+
+  const nsStyleSVGReset *style = firstFrame->StyleSVGReset();
 
   bool complexEffects = false;
   /* Check if we need to do additional operations on this child's
    * rendering, which necessitates rendering into another surface. */
   if (opacity != 1.0f || maskFrame || (clipPathFrame && !isTrivialClip)
-      || aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL) {
+      || aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL
+      || style->mImageCount != 0) {
     complexEffects = true;
     aContext.Save();
     nsRect clipRect =
@@ -589,6 +592,133 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
   } else if (opacity != 1.0f ||
              aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL) {
     aContext.Paint(opacity);
+  }
+
+  int32_t appUnitsPerDevPixel = aFrame->PresContext()->AppUnitsPerDevPixel();
+
+  // TBD: considerate aDirtyRect.
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, style) {
+    const nsStyleBackground::Layer &layer = style->mLayers[i];
+
+    // Leverage nsCSSRendering::PrepareBackgroundLayer
+    // TBD: rename PrepareBackgroundLayer to PrepareLayer, so that we
+    // can use this function for both background and mask layer.
+    nsPresContext* presContext = aFrame->PresContext();
+    uint32_t flags = aBuilder->GetBackgroundPaintFlags();
+    nsBackgroundLayerState state =
+      nsCSSRendering::PrepareBackgroundLayer(presContext, aFrame, flags,
+                                             aBoaderRect, aBoaderRect, layer);
+
+    // TBD: <gradient>
+    //nsImageRenderer renderer(aFrame, &layer.mImage, 0);
+    // TBD: move the following code into nsImageRenderer::DrawMask?
+    //bool bReady = renderer.PrepareImage();
+    bool bReady = state.mImageRenderer.PrepareImage();
+    if (bReady) {
+      const nsStyleImage &styleImage = layer.mImage;
+
+      // Generate a SourceSurface from mask image.
+      nsCOMPtr<imgIContainer> imageContainer;
+      DebugOnly<nsresult> rv =
+        styleImage.GetImageData()->GetImage(getter_AddRefs(imageContainer));
+
+      RefPtr<SourceSurface> maskImage;
+      maskImage = imageContainer->GetFrame(imgIContainer::FRAME_CURRENT,
+                                       imgIContainer::FLAG_SYNC_DECODE);
+
+      // mask-origin
+      // mask-clip.
+      // We need box modal information for both mask-origin and mask-clip
+      /*switch (style->mLayers[0].mClip) {
+      case NS_STYLE_MASK_CLIP_BORDER:
+        // Default value.
+        break;
+      case NS_STYLE_MASK_CLIP_PADDING:
+      {
+        IntSize targetSize = aContext.GetDrawTarget()->GetSize();
+        nsMargin border = aFrame->GetUsedBorder();
+        aContext.GetDrawTarget()->PushClipRect(
+          Rect(border.left, border.top, 
+               targetSize.width - border.LeftRight(), 
+               targetSize.height - border.TopBottom()));
+        break;
+      }
+      case NS_STYLE_MASK_CLIP_CONTENT:
+        break;
+      default:
+        NS_NOTREACHED("Unknown clip type");
+        break;
+      }*/
+
+      // mask-mode: alpha | luminance | auto. mask only
+      // Check ComputeLinearRGBLuminanceMask
+
+       // mask-repeat.
+      int repeatX = layer.mRepeat.mXRepeat;
+      int repeatY = layer.mRepeat.mYRepeat;
+      ExtendMode repeatMode =  (repeatX == NS_STYLE_MASK_REPEAT_REPEAT) ||  
+                               (repeatY == NS_STYLE_MASK_REPEAT_REPEAT) ?
+                               ExtendMode::REPEAT : ExtendMode::CLAMP;
+      bool repeatXY = (repeatX == NS_STYLE_BG_REPEAT_REPEAT) &&  
+                      (repeatY == NS_STYLE_BG_REPEAT_REPEAT);
+      mozilla::gfx::SurfacePattern maskPattern(maskImage, repeatMode);
+
+      // mask-size
+      // resize mask pattern.
+      IntSize maskSize = maskImage->GetSize();
+      float yScale = float(state.mDestArea.width) / (maskSize.width * appUnitsPerDevPixel);
+      float xScale = float(state.mDestArea.height) / (maskSize.height * appUnitsPerDevPixel);
+      maskPattern.mMatrix.PreScale(xScale, yScale);
+
+      // Apply mask.
+      // repeat-x or repeat-y
+      if (repeatMode == ExtendMode::REPEAT && !repeatXY) {
+        // We don't support repeat-x/ repeat-y natively in DrawTarget.
+        // Emulate by clipping.
+        // repeat-x only
+        if (repeatY != NS_STYLE_MASK_REPEAT_REPEAT) {
+          IntSize targetSize = aContext.GetDrawTarget()->GetSize();
+          aContext.GetDrawTarget()->PushClipRect(
+            Rect(0, 0, targetSize.width, maskSize.height));
+        // repeat-y only
+        } else {
+          IntSize targetSize = aContext.GetDrawTarget()->GetSize();
+          aContext.GetDrawTarget()->PushClipRect(
+            Rect(0, 0, maskSize.width, targetSize.height));
+        }
+
+        aContext.GetDrawTarget()->Mask(PatternFromState(&aContext), maskPattern);
+        aContext.GetDrawTarget()->PopClip();
+      // no-repeat or repeat on both x & y.
+      } else {
+        aContext.GetDrawTarget()->Mask(PatternFromState(&aContext), maskPattern);
+      }
+
+      // mask-composite: add | subtract | intersect | exclude. mask only.
+      // layer::mComposite
+      switch (layer.mComposite) {
+        case NS_STYLE_MASK_COMPOSITE_ADD:
+          aContext.SetOperator(gfxContext::OPERATOR_OVER);
+          //aContext.SetOp(CompositionOp::OP_OVER);
+          break;
+        case NS_STYLE_MASK_COMPOSITE_SUBTRACT:
+          aContext.SetOperator(gfxContext::OPERATOR_OUT);
+          //aContext.SetOp(CompositionOp::OP_OUT);
+          break;
+        case NS_STYLE_MASK_COMPOSITE_INTERSECT:
+          aContext.SetOperator(gfxContext::OPERATOR_IN);
+          //aContext.SetOp(CompositionOp::OP_IN);
+          break;
+        case NS_STYLE_MASK_COMPOSITE_EXCLUDE:
+          aContext.SetOperator(gfxContext::OPERATOR_XOR);
+          //aContext.SetOp(CompositionOp::OP_XOR);
+          break;
+        default:
+          NS_NOTREACHED("Unknown composite type");
+          break;
+      }
+
+    }
   }
 
   aContext.Restore();

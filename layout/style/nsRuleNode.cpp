@@ -9294,6 +9294,130 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
               parentSVGReset->mMaskType,
               NS_STYLE_MASK_TYPE_LUMINANCE, 0, 0, 0, 0);
 
+  // steal code from background-image.
+  // Compare mask with background, we need two more properties 
+  // and remove one property in nsStyleBackground::Layer.
+  // +: this attribute does not exist in nsStyleBackground::Layers
+  // X: nsStyleBackground::Layers has this attribute but mask-image does not need it.
+  //
+  // (OK) mask-image
+  // (OK) + mask-mode: alpha | luminance | auto. mask only
+  // (OK) mask-repeat: borrow logic from background-repeat.
+  // (OK) mask-position: borrow logic from background-position.
+  // (OK) mask-clip: borrow logic from background-clip.
+  // (OK) mask-origin: borrow logic from background-origin.
+  // (OK) mask-size: borrow logic from background-size
+  // (OK) + mask-composite: add | subtract | intersect | exclude. mask only.
+  // X background-blend-mode(nsBackgroundImage::Layer::mBlendMode) is not required.
+  // X mask-type: luminance | alpha. svg-mask property, suppose I don't need to take care of it.
+
+  // TBD: should I modify SetBackgroundList, so that this function can accept
+  // mask attributes; Or, should I create a new SetMaskList?
+  // mask-image: none | <url> | <image-list> | <element-reference>  | <gradient>
+  uint32_t maxItemCount = 1;
+  bool rebuild = false;
+  nsStyleImage initialImage;
+  SetBackgroundList(aContext, *aRuleData->ValueForMaskImage(),
+                    svgReset->mLayers,
+                    parentSVGReset->mLayers, &nsStyleBackground::Layer::mImage,
+                    initialImage, parentSVGReset->mImageCount, svgReset->mImageCount,
+                    maxItemCount, rebuild, conditions);
+
+  // mask-repeat: enum, inherit, initial [pair list]
+  nsStyleBackground::Repeat initialRepeat;
+  initialRepeat.SetInitialValues();
+  SetBackgroundPairList(aContext, *aRuleData->ValueForMaskRepeat(),
+                        svgReset->mLayers,
+                        parentSVGReset->mLayers, &nsStyleBackground::Layer::mRepeat,
+                        initialRepeat, parentSVGReset->mRepeatCount,
+                        svgReset->mRepeatCount, maxItemCount, rebuild, 
+                        conditions);
+
+  // mask-clip: enum, inherit, initial [list]
+  SetBackgroundList(aContext, *aRuleData->ValueForMaskClip(),
+                    svgReset->mLayers,
+                    parentSVGReset->mLayers, &nsStyleBackground::Layer::mClip,
+                    uint8_t(NS_STYLE_BG_CLIP_BORDER), parentSVGReset->mClipCount,
+                    svgReset->mClipCount, maxItemCount, rebuild, conditions);
+
+  // mask-origin: enum, inherit, initial [list]
+  SetBackgroundList(aContext, *aRuleData->ValueForMaskOrigin(),
+                    svgReset->mLayers,
+                    parentSVGReset->mLayers, &nsStyleBackground::Layer::mOrigin,
+                    uint8_t(NS_STYLE_BG_ORIGIN_PADDING), parentSVGReset->mOriginCount,
+                    svgReset->mOriginCount, maxItemCount, rebuild,
+                    conditions);
+
+  // mask-position: enum, length, percent (flags), inherit [pair list]
+  nsStyleBackground::Position initialPosition;
+  initialPosition.SetInitialPercentValues(0.0f);
+  SetBackgroundList(aContext, *aRuleData->ValueForMaskPosition(),
+                    svgReset->mLayers,
+                    parentSVGReset->mLayers, &nsStyleBackground::Layer::mPosition,
+                    initialPosition, parentSVGReset->mPositionCount,
+                    svgReset->mPositionCount, maxItemCount, rebuild,
+                    conditions);
+
+  // mask-size: enum, length, auto, inherit, initial [pair list]
+  nsStyleBackground::Size initialSize;
+  initialSize.SetInitialValues();
+  SetBackgroundPairList(aContext, *aRuleData->ValueForMaskSize(),
+                        svgReset->mLayers,
+                        parentSVGReset->mLayers, &nsStyleBackground::Layer::mSize,
+                        initialSize, parentSVGReset->mSizeCount,
+                        svgReset->mSizeCount, maxItemCount, rebuild,
+                        conditions);
+
+  // mask-mode: alpha | luminance | auto
+  SetBackgroundList(aContext, *aRuleData->ValueForMaskMode(),
+                    svgReset->mLayers,
+                    parentSVGReset->mLayers, &nsStyleBackground::Layer::mMode,
+                    uint8_t(NS_STYLE_MASK_MODE_AUTO), parentSVGReset->mModeCount,
+                    svgReset->mModeCount, maxItemCount, rebuild, conditions);
+
+  // mask-composition: add | subtract | intersect | exclude
+  SetBackgroundList(aContext, *aRuleData->ValueForMaskComposite(),
+                    svgReset->mLayers,
+                    parentSVGReset->mLayers, &nsStyleBackground::Layer::mComposite,
+                    uint8_t(NS_STYLE_MASK_COMPOSITE_ADD), parentSVGReset->mCompositeCount,
+                    svgReset->mCompositeCount, maxItemCount, rebuild, conditions);
+
+  if (rebuild) {
+    // Delete any extra items.  We need to keep layers in which any
+    // property was specified.
+    svgReset->mLayers.TruncateLength(maxItemCount);
+
+    uint32_t fillCount = svgReset->mImageCount;
+
+    // TBD:
+    // We don't need attachment. Keep it set is because 
+    // nsCSSRendering::PrepareBackgroundLayer need this value.
+    // Remove these code after we have nsCSSRendering::PrepareMaskLayer.
+    for (uint32_t i = 0; i < fillCount; i++) {
+      svgReset->mLayers[i].mAttachment = NS_STYLE_BG_ATTACHMENT_SCROLL;
+    }
+
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mImage,
+                       svgReset->mImageCount, fillCount);
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mRepeat,
+                       svgReset->mRepeatCount, fillCount);
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mClip,
+                       svgReset->mClipCount, fillCount);
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mOrigin,
+                       svgReset->mOriginCount, fillCount);
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mPosition,
+                       svgReset->mPositionCount, fillCount);
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mSize,
+                       svgReset->mSizeCount, fillCount);
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mMode,
+                       svgReset->mSizeCount, fillCount);
+    FillBackgroundList(svgReset->mLayers, &nsStyleBackground::Layer::mComposite,
+                       svgReset->mSizeCount, fillCount);
+  }
+
+  for (uint32_t i = 0; i < svgReset->mImageCount; ++i)
+    svgReset->mLayers[i].TrackImages(aContext->PresContext());
+
   COMPUTE_END_RESET(SVGReset, svgReset)
 }
 

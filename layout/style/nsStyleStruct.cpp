@@ -1269,6 +1269,14 @@ nsStyleFilter::SetDropShadow(nsCSSShadowArray* aDropShadow)
 // nsStyleSVGReset
 //
 nsStyleSVGReset::nsStyleSVGReset() 
+: mClipCount(0),
+  mOriginCount(0),
+  mRepeatCount(0),
+  mPositionCount(0),
+  mImageCount(0),
+  mSizeCount(0),
+  mModeCount(0),
+  mCompositeCount(0)
 {
     MOZ_COUNT_CTOR(nsStyleSVGReset);
     mStopColor               = NS_RGB(0,0,0);
@@ -1280,6 +1288,10 @@ nsStyleSVGReset::nsStyleSVGReset()
     mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
     mVectorEffect            = NS_STYLE_VECTOR_EFFECT_NONE;
     mMaskType                = NS_STYLE_MASK_TYPE_LUMINANCE;
+
+    /*nsStyleBackground::Layer *onlyLayer = mLayers.AppendElement();
+    NS_ASSERTION(onlyLayer, "auto array must have room for 1 element");
+    onlyLayer->SetInitialValues();*/
 }
 
 nsStyleSVGReset::~nsStyleSVGReset() 

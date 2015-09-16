@@ -96,13 +96,14 @@ class ProcessHandlerMixin(object):
                     os.setpgid(0, 0)
                 preexec_fn = setpgidfn
 
-            if isinstance(env, dict):
+            fs_encoding = sys.getfilesystemencoding()
+            if isinstance(env, dict) and fs_encoding:
                 tmp_env = {}
                 for k, v in env.iteritems():
                     if isinstance(k, bytes):
-                        k = k.decode(sys.getfilesystemencoding() or 'utf-8', 'replace')
+                        k = k.decode(fs_encoding, 'replace').encode('utf-8')
                     if isinstance(v, bytes):
-                        v = v.decode(sys.getfilesystemencoding() or 'utf-8', 'replace')
+                        v = v.decode(fs_encoding, 'replace').encode('utf-8')
                     tmp_env[k] = v
                 env = tmp_env
 

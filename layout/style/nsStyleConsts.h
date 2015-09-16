@@ -969,6 +969,32 @@ static inline mozilla::css::Side operator++(mozilla::css::Side& side, int) {
 #define NS_STYLE_GRADIENT_SIZE_EXPLICIT_SIZE    4
 
 // See nsStyleSVG
+#define NS_STYLE_MASK_REPEAT_NO_REPEAT          0x00
+#define NS_STYLE_MASK_REPEAT_REPEAT_X           0x01
+#define NS_STYLE_MASK_REPEAT_REPEAT_Y           0x02
+#define NS_STYLE_MASK_REPEAT_REPEAT             0x03
+
+#define NS_STYLE_MASK_ORIGIN_BORDER  	       	0
+#define NS_STYLE_MASK_ORIGIN_PADDING    	    1
+#define NS_STYLE_MASK_ORIGIN_CONTENT        	2
+
+#define NS_STYLE_MASK_POSITION_CENTER  			(1<<0)
+#define NS_STYLE_MASK_POSITION_TOP     			(1<<1)
+#define NS_STYLE_MASK_POSITION_BOTTOM  			(1<<2)
+#define NS_STYLE_MASK_POSITION_LEFT    			(1<<3)
+#define NS_STYLE_MASK_POSITION_RIGHT   			(1<<4)
+
+#define NS_STYLE_MASK_SIZE_CONTAIN  			0
+#define NS_STYLE_MASK_SIZE_COVER    			1
+
+#define NS_STYLE_MASK_MODE_ALPHA				0
+#define NS_STYLE_MASK_MODE_LUMINANCE			1
+#define NS_STYLE_MASK_MODE_AUTO					2
+
+#define NS_STYLE_MASK_COMPOSITE_ADD				0
+#define NS_STYLE_MASK_COMPOSITE_SUBTRACT		1
+#define NS_STYLE_MASK_COMPOSITE_INTERSECT		2
+#define NS_STYLE_MASK_COMPOSITE_EXCLUDE			3
 
 // dominant-baseline
 #define NS_STYLE_DOMINANT_BASELINE_AUTO              0

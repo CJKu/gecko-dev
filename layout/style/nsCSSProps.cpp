@@ -2021,6 +2021,56 @@ const KTableValue nsCSSProps::kMaskTypeKTable[] = {
   eCSSKeyword_UNKNOWN, -1
 };
 
+const KTableValue nsCSSProps::kMaskRepeatKTable[] = {
+  eCSSKeyword_no_repeat,  NS_STYLE_MASK_REPEAT_NO_REPEAT,
+  eCSSKeyword_repeat,     NS_STYLE_MASK_REPEAT_REPEAT,
+  eCSSKeyword_repeat_x,   NS_STYLE_MASK_REPEAT_REPEAT_X,
+  eCSSKeyword_repeat_y,   NS_STYLE_MASK_REPEAT_REPEAT_Y,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskRepeatPartKTable[] = {
+  eCSSKeyword_no_repeat,  NS_STYLE_MASK_REPEAT_NO_REPEAT,
+  eCSSKeyword_repeat,     NS_STYLE_MASK_REPEAT_REPEAT,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskSizeKTable[] = {
+  eCSSKeyword_contain, NS_STYLE_MASK_SIZE_CONTAIN,
+  eCSSKeyword_cover,   NS_STYLE_MASK_SIZE_COVER,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskModeKTable[] = {
+  eCSSKeyword_alpha, NS_STYLE_MASK_MODE_ALPHA,
+  eCSSKeyword_luminance, NS_STYLE_MASK_MODE_LUMINANCE,
+  eCSSKeyword_auto, NS_STYLE_MASK_MODE_AUTO,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskOriginKTable[] = {
+  eCSSKeyword_border_box, NS_STYLE_MASK_ORIGIN_BORDER,
+  eCSSKeyword_padding_box, NS_STYLE_MASK_ORIGIN_PADDING,
+  eCSSKeyword_content_box, NS_STYLE_MASK_ORIGIN_CONTENT,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskPositionKTable[] = {
+  eCSSKeyword_center, NS_STYLE_MASK_POSITION_CENTER,
+  eCSSKeyword_top, NS_STYLE_MASK_POSITION_TOP,
+  eCSSKeyword_bottom, NS_STYLE_MASK_POSITION_BOTTOM,
+  eCSSKeyword_left, NS_STYLE_MASK_POSITION_LEFT,
+  eCSSKeyword_right, NS_STYLE_MASK_POSITION_RIGHT,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskCompositeKTable[] = {
+  eCSSKeyword_subtract, NS_STYLE_MASK_COMPOSITE_SUBTRACT,
+  eCSSKeyword_intersect, NS_STYLE_MASK_COMPOSITE_INTERSECT,
+  eCSSKeyword_exclude, NS_STYLE_MASK_COMPOSITE_EXCLUDE,
+  eCSSKeyword_UNKNOWN,-1
+};
+
 const KTableValue nsCSSProps::kShapeRenderingKTable[] = {
   eCSSKeyword_auto, NS_STYLE_SHAPE_RENDERING_AUTO,
   eCSSKeyword_optimizespeed, NS_STYLE_SHAPE_RENDERING_OPTIMIZESPEED,

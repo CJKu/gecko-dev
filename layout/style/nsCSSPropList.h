@@ -3978,6 +3978,120 @@ CSS_PROP_SVG(
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_SVGRESET(
+    mask-image,
+    mask_image,
+    MaskImage,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_CREATES_STACKING_CONTEXT |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
+        CSS_PROPERTY_IGNORED_WHEN_COLORS_DISABLED |
+        CSS_PROPERTY_START_IMAGE_LOADS,
+    "",
+    VARIANT_IMAGE,
+    nullptr,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-repeat,
+    mask_repeat,
+    MaskRepeat,
+    CSS_PROPERTY_PARSE_FUNCTION |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kMaskRepeatKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-origin,
+    mask_origin,
+    MaskOrigin,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kMaskOriginKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-clip,
+    mask_clip,
+    MaskClip,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kMaskOriginKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+// TBD
+// Copy from background-position, which animation type is eStyleAnimType_Custom
+// Need to do something in StyleAnimationValue::ExtractComputedValue.
+CSS_PROP_SVGRESET(
+    mask-position,
+    mask_position,
+    MaskPosition,
+    CSS_PROPERTY_PARSE_FUNCTION |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
+        CSS_PROPERTY_UNITLESS_LENGTH_QUIRK |
+        CSS_PROPERTY_STORES_CALC,
+    "",
+    0,
+    kMaskPositionKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_Custom)
+CSS_PROP_SVGRESET(
+    mask-size,
+    mask_size,
+    MaskSize,
+    CSS_PROPERTY_PARSE_FUNCTION |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
+        CSS_PROPERTY_VALUE_NONNEGATIVE |
+        CSS_PROPERTY_STORES_CALC,
+    "",
+    0,
+    kMaskSizeKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_Custom)
+CSS_PROP_SVGRESET(
+    mask-mode,
+    mask_mode,
+    MaskMode,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kMaskModeKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-composite,
+    mask_composite,
+    MaskComposite,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kMaskCompositeKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)    
+CSS_PROP_SVGRESET(
     mask,
     mask,
     Mask,

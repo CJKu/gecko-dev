@@ -518,7 +518,9 @@ struct nsStyleBackground {
     Position mPosition;                 // [reset]
     nsStyleImage mImage;                // [reset]
     Size mSize;                         // [reset]
-
+    // TBD: remoge these two attributes.
+    uint8_t mComposite;
+    uint8_t mMode;
     // Initializes only mImage
     Layer();
     ~Layer();
@@ -3170,6 +3172,10 @@ struct nsStyleSVGReset {
       AllocateByObjectID(nsPresArena::nsStyleSVGReset_id, sz);
   }
   void Destroy(nsPresContext* aContext) {
+    // Untrack all the images stored in our layers
+    for (uint32_t i = 0; i < mImageCount; ++i)
+      mLayers[i].UntrackImages(aContext);
+
     this->~nsStyleSVGReset();
     aContext->PresShell()->
       FreeByObjectID(nsPresArena::nsStyleSVGReset_id, this);
@@ -3209,6 +3215,56 @@ struct nsStyleSVGReset {
   uint8_t          mDominantBaseline; // [reset] see nsStyleConsts.h
   uint8_t          mVectorEffect;     // [reset] see nsStyleConsts.h
   uint8_t          mMaskType;         // [reset] see nsStyleConsts.h
+
+  /*struct Layer;
+  //friend struct Layer;
+  struct Layer {
+    uint8_t mClip;                      // [reset] See nsStyleConsts.h
+    uint8_t mOrigin;                    // [reset] See nsStyleConsts.h
+    Repeat mRepeat;                     // [reset] See nsStyleConsts.h
+    Position mPosition;                 // [reset]
+    nsStyleImage mImage;                // [reset]
+    Size mSize;                         // [reset]
+    uint8_t mComposite;
+    uint8_t mMode;
+
+    // Initializes only mImage
+    Layer();
+    ~Layer();
+
+    // Register/unregister images with the document. We do this only
+    // after the dust has settled in ComputeSVGResetData.
+    void TrackImages(nsPresContext* aContext) {
+      if (mImage.GetType() == eStyleImageType_Image)
+        mImage.TrackImage(aContext);
+    }
+    void UntrackImages(nsPresContext* aContext) {
+      if (mImage.GetType() == eStyleImageType_Image)
+        mImage.UntrackImage(aContext);
+    }
+
+    bool RenderingMightDependOnPositioningAreaSizeChange() const;
+
+    // An equality operator that compares the images using URL-equality
+    // rather than pointer-equality.
+    bool operator==(const Layer& aOther) const;
+    bool operator!=(const Layer& aOther) const {
+      return !(*this == aOther);
+    }
+  };*/
+  // Borrow from nsStyleBackground.
+  // We need mask-image, mask-repeat, mask-position, mask-clip, mask-origin and mask-size
+  // nsStyleBackgound has mImage, mRepeat, mPosition, mClip, mOrigin and mSize.
+  // Take advange of it while prototyping.
+  uint32_t mClipCount,
+           mOriginCount,
+           mRepeatCount,
+           mPositionCount,
+           mImageCount,
+           mSizeCount,
+           mModeCount,
+           mCompositeCount;
+  nsAutoTArray<nsStyleBackground::Layer, 1> mLayers;
 };
 
 struct nsStyleVariables {
