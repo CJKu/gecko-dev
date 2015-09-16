@@ -838,6 +838,14 @@ protected:
   bool ParseBackgroundRepeatValues(nsCSSValuePair& aValue);
   bool ParseBackgroundPosition();
 
+  bool ParseMaskRepeat();
+  bool ParseMaskRepeatValues(nsCSSValuePair& aValue);
+  bool ParseMaskClip();
+  bool ParseMaskClipValues(nsCSSValuePair& aValue);
+  bool ParseMaskPosition();
+  bool ParseMaskSize();
+  bool ParseMaskSizeValues(nsCSSValuePair& aOut);
+
   // ParseBoxPositionValues parses the CSS 2.1 background-position syntax,
   // which is still used by some properties. See ParsePositionValue
   // for the css3-background syntax.
@@ -10509,6 +10517,12 @@ CSSParserImpl::ParsePropertyByFunction(nsCSSProperty aPropID)
     return ParseScrollSnapType();
   case eCSSProperty_all:
     return ParseAll();
+  case eCSSProperty_mask_repeat:
+     return ParseMaskRepeat();
+  case eCSSProperty_mask_position:
+    return ParseMaskPosition();
+  case eCSSProperty_mask_size:
+    return ParseMaskSize();
   default:
     MOZ_ASSERT(false, "should not be called");
     return false;
@@ -11109,11 +11123,62 @@ CSSParserImpl::ParseBackgroundRepeat()
 }
 
 bool
-CSSParserImpl::ParseBackgroundRepeatValues(nsCSSValuePair& aValue) 
+CSSParserImpl::ParseMaskRepeat()
+{
+  nsCSSValue value;
+  // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
+  if (!ParseSingleTokenVariant(value, VARIANT_INHERIT, nullptr)) {
+    nsCSSValuePair valuePair;
+    if (!ParseMaskRepeatValues(valuePair)) {
+      return false;
+    }
+    nsCSSValuePairList* item = value.SetPairListValue();
+    for (;;) {
+      item->mXValue = valuePair.mXValue;
+      item->mYValue = valuePair.mYValue;
+      if (!ExpectSymbol(',', true)) {
+        break;
+      }
+      if (!ParseBackgroundRepeatValues(valuePair)) {
+        return false;
+      }
+      item->mNext = new nsCSSValuePairList;
+      item = item->mNext;
+    }
+  }
+
+  AppendValue(eCSSProperty_mask_repeat, value);
+  return true;
+}
+
+bool
+CSSParserImpl::ParseMaskRepeatValues(nsCSSValuePair& aValue)
 {
   nsCSSValue& xValue = aValue.mXValue;
   nsCSSValue& yValue = aValue.mYValue;
-  
+
+  if (ParseEnum(xValue, nsCSSProps::kMaskRepeatKTable)) {
+    int32_t value = xValue.GetIntValue();
+    // For single values set yValue as eCSSUnit_Null.
+    if (value == NS_STYLE_BG_REPEAT_REPEAT_X ||
+        value == NS_STYLE_BG_REPEAT_REPEAT_Y ||
+        !ParseEnum(yValue, nsCSSProps::kMaskRepeatPartKTable)) {
+      // the caller will fail cases like "repeat-x no-repeat"
+      // by expecting a list separator or an end property.
+      yValue.Reset();
+    }
+    return true;
+  }
+
+  return false;
+}
+
+bool
+CSSParserImpl::ParseBackgroundRepeatValues(nsCSSValuePair& aValue)
+{
+  nsCSSValue& xValue = aValue.mXValue;
+  nsCSSValue& yValue = aValue.mYValue;
+
   if (ParseEnum(xValue, nsCSSProps::kBackgroundRepeatKTable)) {
     int32_t value = xValue.GetIntValue();
     // For single values set yValue as eCSSUnit_Null.
@@ -11159,6 +11224,32 @@ CSSParserImpl::ParseBackgroundPosition()
   return true;
 }
 
+bool
+CSSParserImpl::ParseMaskPosition()
+{
+  nsCSSValue value;
+  // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
+  if (!ParseSingleTokenVariant(value, VARIANT_INHERIT, nullptr)) {
+    nsCSSValue itemValue;
+    if (!ParsePositionValue(itemValue)) {
+      return false;
+    }
+    nsCSSValueList* item = value.SetListValue();
+    for (;;) {
+      item->mValue = itemValue;
+      if (!ExpectSymbol(',', true)) {
+        break;
+      }
+      if (!ParsePositionValue(itemValue)) {
+        return false;
+      }
+      item->mNext = new nsCSSValueList;
+      item = item->mNext;
+    }
+  }
+  AppendValue(eCSSProperty_mask_position, value);
+  return true;
+}
 /**
  * BoxPositionMaskToCSSValue and ParseBoxPositionValues are used
  * for parsing the CSS 2.1 background-position syntax (which has at
@@ -11478,6 +11569,33 @@ CSSParserImpl::ParseBackgroundSize()
   return true;
 }
 
+bool
+CSSParserImpl::ParseMaskSize()
+{
+  nsCSSValue value;
+  // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
+  if (!ParseSingleTokenVariant(value, VARIANT_INHERIT, nullptr)) {
+    nsCSSValuePair valuePair;
+    if (!ParseMaskSizeValues(valuePair)) {
+      return false;
+    }
+    nsCSSValuePairList* item = value.SetPairListValue();
+    for (;;) {
+      item->mXValue = valuePair.mXValue;
+      item->mYValue = valuePair.mYValue;
+      if (!ExpectSymbol(',', true)) {
+        break;
+      }
+      if (!ParseMaskSizeValues(valuePair)) {
+        return false;
+      }
+      item->mNext = new nsCSSValuePairList;
+      item = item->mNext;
+    }
+  }
+  AppendValue(eCSSProperty_mask_size, value);
+  return true;
+}
 /**
  * Parses two values that correspond to lengths for the background-size
  * property.  These can be one or two lengths (or the 'auto' keyword) or
@@ -11521,6 +11639,40 @@ bool CSSParserImpl::ParseBackgroundSizeValues(nsCSSValuePair &aOut)
   yValue.Reset();
   return true;
 }
+
+bool CSSParserImpl::ParseMaskSizeValues(nsCSSValuePair &aOut)
+{
+  // First try a percentage or a length value
+  nsCSSValue &xValue = aOut.mXValue,
+             &yValue = aOut.mYValue;
+  CSSParseResult result =
+    ParseNonNegativeVariant(xValue, BG_SIZE_VARIANT, nullptr);
+  if (result == CSSParseResult::Error) {
+    return false;
+  } else if (result == CSSParseResult::Ok) {
+    // We have one percentage/length/calc/auto. Get the optional second
+    // percentage/length/calc/keyword.
+    result = ParseNonNegativeVariant(yValue, BG_SIZE_VARIANT, nullptr);
+    if (result == CSSParseResult::Error) {
+      return false;
+    } else if (result == CSSParseResult::Ok) {
+      // We have a second percentage/length/calc/auto.
+      return true;
+    }
+
+    // If only one percentage or length value is given, it sets the
+    // horizontal size only, and the vertical size will be as if by 'auto'.
+    yValue.SetAutoValue();
+    return true;
+  }
+
+  // Now address 'contain' and 'cover'.
+  if (!ParseEnum(xValue, nsCSSProps::kMaskSizeKTable))
+    return false;
+  yValue.Reset();
+  return true;
+}
+
 #undef BG_SIZE_VARIANT
 
 bool

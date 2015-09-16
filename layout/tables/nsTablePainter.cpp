@@ -123,7 +123,7 @@ TableBackgroundPainter::TableBackgroundData::ShouldSetBCBorder() const
   }
 
   const nsStyleBackground *bg = mFrame->StyleBackground();
-  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, bg) {
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, bg->mLayers) {
     if (!bg->mLayers[i].mImage.IsEmpty())
       return true;
   }

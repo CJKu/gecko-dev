@@ -780,9 +780,9 @@ nsFrame::DidSetStyleContext(nsStyleContext* aOldStyleContext)
                                    nullptr;
   const nsStyleBackground *newBG = StyleBackground();
   if (oldBG) {
-    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, oldBG) {
+    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, oldBG->mLayers) {
       // If there is an image in oldBG that's not in newBG, drop it.
-      if (i >= newBG->mImageCount ||
+      if (i >= newBG->mLayers.mImageCount ||
           !oldBG->mLayers[i].mImage.ImageDataEquals(newBG->mLayers[i].mImage)) {
         const nsStyleImage& oldImage = oldBG->mLayers[i].mImage;
         if (oldImage.GetType() != eStyleImageType_Image) {
@@ -795,9 +795,9 @@ nsFrame::DidSetStyleContext(nsStyleContext* aOldStyleContext)
     }
   }
 
-  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, newBG) {
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, newBG->mLayers) {
     // If there is an image in newBG that's not in oldBG, add it.
-    if (!oldBG || i >= oldBG->mImageCount ||
+    if (!oldBG || i >= oldBG->mLayers.mImageCount ||
         !newBG->mLayers[i].mImage.ImageDataEquals(oldBG->mLayers[i].mImage)) {
       const nsStyleImage& newImage = newBG->mLayers[i].mImage;
       if (newImage.GetType() != eStyleImageType_Image) {
@@ -805,7 +805,40 @@ nsFrame::DidSetStyleContext(nsStyleContext* aOldStyleContext)
       }
 
       imageLoader->AssociateRequestToFrame(newImage.GetImageData(), this);
-    }          
+    }
+  }
+
+  const nsStyleSVGReset *oldSVGReset = aOldStyleContext ?
+                                   aOldStyleContext->StyleSVGReset() :
+                                   nullptr;
+  const nsStyleSVGReset *newSVGReset = StyleSVGReset();
+  if (oldSVGReset) {
+    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, oldSVGReset->mLayers) {
+      // If there is an image in oldSVGReset that's not in newSVGReset, drop it.
+      if (i >= newSVGReset->mLayers.mImageCount ||
+          !oldSVGReset->mLayers[i].mImage.ImageDataEquals(newSVGReset->mLayers[i].mImage)) {
+        const nsStyleImage& oldImage = oldSVGReset->mLayers[i].mImage;
+        if (oldImage.GetType() != eStyleImageType_Image) {
+          continue;
+        }
+
+        imageLoader->DisassociateRequestFromFrame(oldImage.GetImageData(),
+                                                  this);
+      }
+    }
+  }
+
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, newSVGReset->mLayers) {
+    // If there is an image in newSVGReset that's not in oldBG, add it.
+    if (!oldBG || i >= oldBG->mLayers.mImageCount ||
+        !newSVGReset->mLayers[i].mImage.ImageDataEquals(oldBG->mLayers[i].mImage)) {
+      const nsStyleImage& newImage = newSVGReset->mLayers[i].mImage;
+      if (newImage.GetType() != eStyleImageType_Image) {
+        continue;
+      }
+
+      imageLoader->AssociateRequestToFrame(newImage.GetImageData(), this);
+    }
   }
 
   if (aOldStyleContext) {

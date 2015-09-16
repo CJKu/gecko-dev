@@ -1789,15 +1789,15 @@ nsComputedDOMStyle::DoGetFontVariantPosition()
 }
 
 CSSValue*
-nsComputedDOMStyle::GetBackgroundList(uint8_t nsStyleBackground::Layer::* aMember,
-                                      uint32_t nsStyleBackground::* aCount,
+nsComputedDOMStyle::GetBackgroundList(uint8_t nsCSSLayers::Layer::* aMember,
+                                      uint32_t nsCSSLayers::* aCount,
                                       const KTableValue aTable[])
 {
   const nsStyleBackground* bg = StyleBackground();
 
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->*aCount; i < i_end; ++i) {
+  for (uint32_t i = 0, i_end = &(bg->mLayers)->*aCount; i < i_end; ++i) {
     nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
     valueList->AppendCSSValue(val);
     val->SetIdent(nsCSSProps::ValueToKeywordEnum(bg->mLayers[i].*aMember,
@@ -1810,16 +1810,16 @@ nsComputedDOMStyle::GetBackgroundList(uint8_t nsStyleBackground::Layer::* aMembe
 CSSValue*
 nsComputedDOMStyle::DoGetBackgroundAttachment()
 {
-  return GetBackgroundList(&nsStyleBackground::Layer::mAttachment,
-                           &nsStyleBackground::mAttachmentCount,
+  return GetBackgroundList(&nsCSSLayers::Layer::mAttachment,
+                           &nsCSSLayers::mAttachmentCount,
                            nsCSSProps::kBackgroundAttachmentKTable);
 }
 
 CSSValue*
 nsComputedDOMStyle::DoGetBackgroundClip()
 {
-  return GetBackgroundList(&nsStyleBackground::Layer::mClip,
-                           &nsStyleBackground::mClipCount,
+  return GetBackgroundList(&nsCSSLayers::Layer::mClip,
+                           &nsCSSLayers::mClipCount,
                            nsCSSProps::kBackgroundOriginKTable);
 }
 
@@ -2122,7 +2122,7 @@ nsComputedDOMStyle::DoGetBackgroundImage()
 
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mImageCount; i < i_end; ++i) {
+  for (uint32_t i = 0, i_end = bg->mLayers.mImageCount; i < i_end; ++i) {
     nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
     valueList->AppendCSSValue(val);
 
@@ -2136,22 +2136,22 @@ nsComputedDOMStyle::DoGetBackgroundImage()
 CSSValue*
 nsComputedDOMStyle::DoGetBackgroundBlendMode()
 {
-  return GetBackgroundList(&nsStyleBackground::Layer::mBlendMode,
-                           &nsStyleBackground::mBlendModeCount,
+  return GetBackgroundList(&nsCSSLayers::Layer::mBlendMode,
+                           &nsCSSLayers::mBlendModeCount,
                            nsCSSProps::kBlendModeKTable);
 }
 
 CSSValue*
 nsComputedDOMStyle::DoGetBackgroundOrigin()
 {
-  return GetBackgroundList(&nsStyleBackground::Layer::mOrigin,
-                           &nsStyleBackground::mOriginCount,
+  return GetBackgroundList(&nsCSSLayers::Layer::mOrigin,
+                           &nsCSSLayers::mOriginCount,
                            nsCSSProps::kBackgroundOriginKTable);
 }
 
 void
 nsComputedDOMStyle::SetValueToPositionCoord(
-    const nsStyleBackground::Position::PositionCoord& aCoord,
+    const nsCSSLayers::Position::PositionCoord& aCoord,
     nsROCSSPrimitiveValue* aValue)
 {
   if (!aCoord.mHasPercent) {
@@ -2167,7 +2167,7 @@ nsComputedDOMStyle::SetValueToPositionCoord(
 
 void
 nsComputedDOMStyle::SetValueToPosition(
-    const nsStyleBackground::Position& aPosition,
+    const nsCSSLayers::Position& aPosition,
     nsDOMCSSValueList* aValueList)
 {
   nsROCSSPrimitiveValue* valX = new nsROCSSPrimitiveValue;
@@ -2186,7 +2186,7 @@ nsComputedDOMStyle::DoGetBackgroundPosition()
 
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mPositionCount; i < i_end; ++i) {
+  for (uint32_t i = 0, i_end = bg->mLayers.mPositionCount; i < i_end; ++i) {
     nsDOMCSSValueList *itemList = GetROCSSValueList(false);
     valueList->AppendCSSValue(itemList);
 
@@ -2203,7 +2203,7 @@ nsComputedDOMStyle::DoGetBackgroundRepeat()
 
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mRepeatCount; i < i_end; ++i) {
+  for (uint32_t i = 0, i_end = bg->mLayers.mRepeatCount; i < i_end; ++i) {
     nsDOMCSSValueList *itemList = GetROCSSValueList(false);
     valueList->AppendCSSValue(itemList);
 
@@ -2251,15 +2251,15 @@ nsComputedDOMStyle::DoGetBackgroundSize()
 
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mSizeCount; i < i_end; ++i) {
-    const nsStyleBackground::Size &size = bg->mLayers[i].mSize;
+  for (uint32_t i = 0, i_end = bg->mLayers.mSizeCount; i < i_end; ++i) {
+    const nsCSSLayers::Size &size = bg->mLayers[i].mSize;
 
     switch (size.mWidthType) {
-      case nsStyleBackground::Size::eContain:
-      case nsStyleBackground::Size::eCover: {
+      case nsCSSLayers::Size::eContain:
+      case nsCSSLayers::Size::eCover: {
         MOZ_ASSERT(size.mWidthType == size.mHeightType,
                    "unsynced types");
-        nsCSSKeyword keyword = size.mWidthType == nsStyleBackground::Size::eContain
+        nsCSSKeyword keyword = size.mWidthType == nsCSSLayers::Size::eContain
                              ? eCSSKeyword_contain
                              : eCSSKeyword_cover;
         nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
@@ -2276,11 +2276,11 @@ nsComputedDOMStyle::DoGetBackgroundSize()
         nsROCSSPrimitiveValue* valY = new nsROCSSPrimitiveValue;
         itemList->AppendCSSValue(valY);
 
-        if (size.mWidthType == nsStyleBackground::Size::eAuto) {
+        if (size.mWidthType == nsCSSLayers::Size::eAuto) {
           valX->SetIdent(eCSSKeyword_auto);
         } else {
           MOZ_ASSERT(size.mWidthType ==
-                       nsStyleBackground::Size::eLengthPercentage,
+                       nsCSSLayers::Size::eLengthPercentage,
                      "bad mWidthType");
           if (!size.mWidth.mHasPercent &&
               // negative values must have come from calc()
@@ -2297,11 +2297,11 @@ nsComputedDOMStyle::DoGetBackgroundSize()
           }
         }
 
-        if (size.mHeightType == nsStyleBackground::Size::eAuto) {
+        if (size.mHeightType == nsCSSLayers::Size::eAuto) {
           valY->SetIdent(eCSSKeyword_auto);
         } else {
           MOZ_ASSERT(size.mHeightType ==
-                       nsStyleBackground::Size::eLengthPercentage,
+                       nsCSSLayers::Size::eLengthPercentage,
                      "bad mHeightType");
           if (!size.mHeight.mHasPercent &&
               // negative values must have come from calc()

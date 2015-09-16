@@ -36,6 +36,7 @@ class nsDOMCSSValueList;
 struct nsMargin;
 class nsROCSSPrimitiveValue;
 struct nsStyleBackground;
+struct nsCSSLayers;
 class nsStyleCoord;
 class nsStyleCorners;
 struct nsStyleFilter;
@@ -188,8 +189,8 @@ private:
                                             const nscolor& aDefaultColor,
                                             bool aIsBoxShadow);
 
-  mozilla::dom::CSSValue* GetBackgroundList(uint8_t nsStyleBackground::Layer::* aMember,
-                                            uint32_t nsStyleBackground::* aCount,
+  mozilla::dom::CSSValue* GetBackgroundList(uint8_t nsCSSLayers::Layer::* aMember,
+                                            uint32_t nsCSSLayers::* aCount,
                                             const KTableValue aTable[]);
 
   void GetCSSGradientString(const nsStyleGradient* aGradient,
@@ -531,9 +532,9 @@ private:
   void SetValueToStyleImage(const nsStyleImage& aStyleImage,
                             nsROCSSPrimitiveValue* aValue);
   void SetValueToPositionCoord(
-    const nsStyleBackground::Position::PositionCoord& aCoord,
+    const nsCSSLayers::Position::PositionCoord& aCoord,
     nsROCSSPrimitiveValue* aValue);
-  void SetValueToPosition(const nsStyleBackground::Position& aPosition,
+  void SetValueToPosition(const nsCSSLayers::Position& aPosition,
                           nsDOMCSSValueList* aValueList);
 
   /**
