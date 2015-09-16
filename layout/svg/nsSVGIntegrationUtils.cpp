@@ -23,6 +23,7 @@
 #include "FrameLayerBuilder.h"
 #include "BasicLayers.h"
 #include "mozilla/gfx/Point.h"
+#include "nsCSSRendering.h"
 
 using namespace mozilla;
 using namespace mozilla::layers;
@@ -152,8 +153,10 @@ nsSVGIntegrationUtils::UsingEffectsForFrame(const nsIFrame* aFrame)
   // checking the SDL prefs here, since we don't know if we're being called for
   // painting or hit-testing anyway.
   const nsStyleSVGReset *style = aFrame->StyleSVGReset();
+  // TBD: temporary put it here.
+  const nsStyleMask *mask = aFrame->StyleMask();
   return (style->HasFilters() ||
-          style->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE || style->mMask);
+          style->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE || style->mMask || (mask->mLayers.mImageCount != 0));
 }
 
 // For non-SVG frames, this gives the offset to the frame's "user space".
@@ -409,6 +412,7 @@ void
 nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
                                               nsIFrame* aFrame,
                                               const nsRect& aDirtyRect,
+                                              const nsRect& aBorderArea,
                                               nsDisplayListBuilder* aBuilder,
                                               LayerManager *aLayerManager)
 {
@@ -468,7 +472,6 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
   if (!isOK) {
     return; // Some resource is missing. We shouldn't paint anything.
   }
-
   bool isTrivialClip = clipPathFrame ? clipPathFrame->IsTrivial() : true;
 
   DrawTarget* drawTarget = aContext.GetDrawTarget();
@@ -507,14 +510,16 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
     nsLayoutUtils::PointToGfxPoint(offsetToUserSpace,
                                    aFrame->PresContext()->AppUnitsPerDevPixel());
   aContext.SetMatrix(aContext.CurrentMatrix().Translate(devPixelOffsetToUserSpace));
-
   gfxMatrix cssPxToDevPxMatrix = GetCSSPxToDevPxMatrix(aFrame);
+
+  const nsStyleMask *mask = firstFrame->StyleMask();
 
   bool complexEffects = false;
   /* Check if we need to do additional operations on this child's
    * rendering, which necessitates rendering into another surface. */
   if (opacity != 1.0f || maskFrame || (clipPathFrame && !isTrivialClip)
-      || aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL) {
+      || aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL
+      || mask->mLayers.mImageCount != 0) {
     complexEffects = true;
     aContext.Save();
     nsRect clipRect =
@@ -589,6 +594,30 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
   } else if (opacity != 1.0f ||
              aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL) {
     aContext.Paint(opacity);
+  }
+
+  if (mask->mLayers.mImageCount != 0) {
+    aContext.SetMatrix(matrixAutoSaveRestore.Matrix());
+    nsRenderingContext rc(&aContext);
+
+    //  Paint all mask images onto a SourceSurface.
+    aContext.PushGroup(gfxContentType::COLOR_ALPHA);
+    nsCSSRendering::PaintBackgroundWithSC(aFrame->PresContext(),
+                                        rc,
+                                        aFrame,
+                                        aDirtyRect,
+                                        aBorderArea,
+                                        firstFrame->StyleContext(),
+                                        *aFrame->StyleBorder(),
+                                        nsCSSRendering::PAINTBG_TO_WINDOW,
+                                        nullptr,
+                                        -1,
+                                        true);
+    Matrix maskMatrix;
+    RefPtr<SourceSurface> maskSurface = aContext.PopGroupToSurface(&maskMatrix);
+
+    // Blend this mask surface with current source surface onto the destination.
+    aContext.Mask(maskSurface, maskMatrix);
   }
 
   aContext.Restore();

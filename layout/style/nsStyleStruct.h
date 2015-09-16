@@ -42,7 +42,7 @@ class imgIContainer;
 
 // Bits for each struct.
 // NS_STYLE_INHERIT_BIT defined in nsStyleStructFwd.h
-#define NS_STYLE_INHERIT_MASK              0x000ffffff
+#define NS_STYLE_INHERIT_MASK              0x001ffffff
 
 // Bits for inherited structs.
 #define NS_STYLE_INHERITED_STRUCT_MASK \
@@ -382,28 +382,9 @@ struct nsStyleColor {
   nscolor mColor;                 // [inherited]
 };
 
-struct nsStyleBackground {
-  nsStyleBackground();
-  nsStyleBackground(const nsStyleBackground& aOther);
-  ~nsStyleBackground();
-
-  void* operator new(size_t sz, nsPresContext* aContext) CPP_THROW_NEW {
-    return aContext->PresShell()->
-      AllocateByObjectID(mozilla::eArenaObjectID_nsStyleBackground, sz);
-  }
-  void Destroy(nsPresContext* aContext);
-
-  nsChangeHint CalcDifference(const nsStyleBackground& aOther) const;
-  static nsChangeHint MaxDifference() {
-    return NS_CombineHint(nsChangeHint_UpdateEffects,
-                          NS_CombineHint(nsChangeHint_RepaintFrame,
-                                         nsChangeHint_NeutralChange));
-  }
-  static nsChangeHint DifferenceAlwaysHandledForDescendants() {
-    // CalcDifference never returns the reflow hints that are sometimes
-    // handled for descendants at all.
-    return nsChangeHint(0);
-  }
+struct nsCSSLayers {
+  nsCSSLayers();
+  nsCSSLayers(const nsCSSLayers &aSource);
 
   struct Position;
   friend struct Position;
@@ -526,6 +507,9 @@ struct nsStyleBackground {
     Position mPosition;                 // [reset]
     nsStyleImage mImage;                // [reset]
     Size mSize;                         // [reset]
+    // TBD: remoge these two attributes.
+    uint8_t mComposite;
+    uint8_t mMode;
 
     // Initializes only mImage
     Layer();
@@ -568,7 +552,10 @@ struct nsStyleBackground {
            mPositionCount,
            mImageCount,
            mSizeCount,
-           mBlendModeCount;
+           mModeCount,           // TODO: 
+           mBlendModeCount, // TODO: Keep on one of mBlendModeCount and mCompositeCount
+           mCompositeCount;
+
   // Layers are stored in an array, matching the top-to-bottom order in
   // which they are specified in CSS.  The number of layers to be used
   // should come from the background-image property.  We create
@@ -583,14 +570,54 @@ struct nsStyleBackground {
 
   const Layer& BottomLayer() const { return mLayers[mImageCount - 1]; }
 
-  #define NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(var_, stylebg_) \
-    for (uint32_t var_ = (stylebg_) ? (stylebg_)->mImageCount : 1; var_-- != 0; )
-  #define NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(var_, stylebg_, start_, count_) \
-    NS_ASSERTION((int32_t)(start_) >= 0 && (uint32_t)(start_) < ((stylebg_) ? (stylebg_)->mImageCount : 1), "Invalid layer start!"); \
+  void TrackImages(nsPresContext* aContext) {
+    for (uint32_t i = 0; i < mImageCount; ++i) {
+        mLayers[i].TrackImages(aContext);
+    }
+  }
+  void UntrackImages(nsPresContext* aContext) {
+    for (uint32_t i = 0; i < mImageCount; ++i)
+      mLayers[i].UntrackImages(aContext);
+  }
+
+  const Layer &operator [](uint32_t aIndex) const {
+    return mLayers[aIndex];
+  }
+
+  Layer &operator [](uint32_t aIndex) {
+    return mLayers[aIndex];
+  }
+
+  #define NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(var_, layers_) \
+    for (uint32_t var_ = layers_.mImageCount; var_-- != 0; )
+  #define NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(var_, layers_, start_, count_) \
+    NS_ASSERTION((int32_t)(start_) >= 0 && (uint32_t)(start_) < (layers_.mImageCount), "Invalid layer start!"); \
     NS_ASSERTION((count_) > 0 && (count_) <= (start_) + 1, "Invalid layer range!"); \
     for (uint32_t var_ = (start_) + 1; var_-- != (uint32_t)((start_) + 1 - (count_)); )
+};
 
-  nscolor mBackgroundColor;       // [reset]
+struct nsStyleBackground {
+  nsStyleBackground();
+  nsStyleBackground(const nsStyleBackground& aOther);
+  ~nsStyleBackground();
+
+  void* operator new(size_t sz, nsPresContext* aContext) CPP_THROW_NEW {
+    return aContext->PresShell()->
+      AllocateByObjectID(mozilla::eArenaObjectID_nsStyleBackground, sz);
+  }
+  void Destroy(nsPresContext* aContext);
+
+  nsChangeHint CalcDifference(const nsStyleBackground& aOther) const;
+  static nsChangeHint MaxDifference() {
+    return NS_CombineHint(nsChangeHint_UpdateEffects,
+                          NS_CombineHint(nsChangeHint_RepaintFrame,
+                                         nsChangeHint_NeutralChange));
+  }
+  static nsChangeHint DifferenceAlwaysHandledForDescendants() {
+    // CalcDifference never returns the reflow hints that are sometimes
+    // handled for descendants at all.
+    return nsChangeHint(0);
+  }
 
   // True if this background is completely transparent.
   bool IsTransparent() const;
@@ -600,6 +627,19 @@ struct nsStyleBackground {
   // Not inline because it uses an nsCOMPtr<imgIRequest>
   // FIXME: Should be in nsStyleStructInlines.h.
   bool HasFixedBackground() const;
+
+  const nsCSSLayers::Layer& BottomLayer() const { return mLayers.BottomLayer(); }
+  
+  const nsAutoTArray<nsCSSLayers::Layer, 1>& Layers() const {
+    return mLayers.mLayers;
+  }
+
+  nsAutoTArray<nsCSSLayers::Layer, 1>& Layers()  {
+    return mLayers.mLayers;
+  }
+
+  nsCSSLayers mLayers;
+  nscolor mBackgroundColor;       // [reset]
 };
 
 // See https://bugzilla.mozilla.org/show_bug.cgi?id=271586#c43 for why
@@ -1390,9 +1430,9 @@ struct nsStylePosition {
     return nsChangeHint(0);
   }
 
-  // XXXdholbert nsStyleBackground::Position should probably be moved to a
+  // XXXdholbert nsCSSLayers::Position should probably be moved to a
   // different scope, since we're now using it in multiple style structs.
-  typedef nsStyleBackground::Position Position;
+  typedef nsCSSLayers::Position Position;
 
   Position      mObjectPosition;        // [reset]
   nsStyleSides  mOffset;                // [reset] coord, percent, calc, auto
@@ -2140,10 +2180,10 @@ struct nsStyleDisplay {
     return nsChangeHint(0);
   }
 
-  // XXXdholbert, XXXkgilbert nsStyleBackground::Position should probably be
+  // XXXdholbert, XXXkgilbert nsCSSLayers::Position should probably be
   // moved to a different scope, since we're now using it in multiple style
   // structs.
-  typedef nsStyleBackground::Position Position;
+  typedef nsCSSLayers::Position Position;
 
   // We guarantee that if mBinding is non-null, so are mBinding->GetURI() and
   // mBinding->mOriginPrincipal.
@@ -3041,7 +3081,7 @@ public:
     mFillRule = aFillRule;
   }
 
-  typedef nsStyleBackground::Position Position;
+  typedef nsCSSLayers::Position Position;
   Position& GetPosition() {
     NS_ASSERTION(mType == eCircle || mType == eEllipse,
                  "expected circle or ellipse");
@@ -3260,6 +3300,47 @@ struct nsStyleSVGReset {
   uint8_t          mDominantBaseline; // [reset] see nsStyleConsts.h
   uint8_t          mVectorEffect;     // [reset] see nsStyleConsts.h
   uint8_t          mMaskType;         // [reset] see nsStyleConsts.h
+};
+
+struct nsStyleMask {
+  nsStyleMask();
+  nsStyleMask(const nsStyleMask& aSource);
+  ~nsStyleMask();
+
+  void* operator new(size_t sz, nsPresContext* aContext) CPP_THROW_NEW {
+    return aContext->PresShell()->
+      AllocateByObjectID(mozilla::eArenaObjectID_nsStyleMask, sz);
+  }
+  void Destroy(nsPresContext* aContext) {
+    mLayers.UntrackImages(aContext);
+
+    this->~nsStyleMask();
+    aContext->PresShell()->
+      FreeByObjectID(mozilla::eArenaObjectID_nsStyleMask, this);
+  }
+
+  nsChangeHint CalcDifference(const nsStyleMask& aOther) const;
+  static nsChangeHint MaxDifference() {
+    return NS_CombineHint(nsChangeHint_UpdateEffects,
+            NS_CombineHint(nsChangeHint_UpdateOverflow, NS_STYLE_HINT_REFLOW));
+  }
+  static nsChangeHint DifferenceAlwaysHandledForDescendants() {
+    // CalcDifference never returns the reflow hints that are sometimes
+    // handled for descendants as hints not handled for descendants.
+    return nsChangeHint_NeedReflow |
+           nsChangeHint_ReflowChangesSizeOrPosition |
+           nsChangeHint_ClearAncestorIntrinsics;
+  }
+
+  const nsAutoTArray<nsCSSLayers::Layer, 1>& Layers() const {
+    return mLayers.mLayers;
+  }
+
+  nsAutoTArray<nsCSSLayers::Layer, 1>& Layers()  {
+    return mLayers.mLayers;
+  }
+
+  nsCSSLayers mLayers;
 };
 
 struct nsStyleVariables {

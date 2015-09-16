@@ -986,7 +986,7 @@ nsCSSRendering::PaintFocus(nsPresContext* aPresContext,
  * that function, except they're for a single coordinate / a single size
  * dimension. (so, x/width vs. y/height)
  */
-typedef nsStyleBackground::Position::PositionCoord PositionCoord;
+typedef nsCSSLayers::Position::PositionCoord PositionCoord;
 static void
 ComputeObjectAnchorCoord(const PositionCoord& aCoord,
                          const nscoord aOriginBounds,
@@ -1010,7 +1010,7 @@ ComputeObjectAnchorCoord(const PositionCoord& aCoord,
 
 void
 nsImageRenderer::ComputeObjectAnchorPoint(
-  const nsStyleBackground::Position& aPos,
+  const nsCSSLayers::Position& aPos,
   const nsSize& aOriginBounds,
   const nsSize& aImageSize,
   nsPoint* aTopLeft,
@@ -1727,7 +1727,7 @@ SetupDirtyRects(const nsRect& aBGClipArea, const nsRect& aCallerDirtyRect,
 }
 
 /* static */ void
-nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
+nsCSSRendering::GetBackgroundClip(const nsCSSLayers::Layer& aLayer,
                                   nsIFrame* aForFrame, const nsStyleBorder& aBorder,
                                   const nsRect& aBorderArea, const nsRect& aCallerDirtyRect,
                                   bool aWillPaintBorder, nscoord aAppUnitsPerPixel,
@@ -2832,7 +2832,8 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
                                       const nsStyleBorder& aBorder,
                                       uint32_t aFlags,
                                       nsRect* aBGClipRect,
-                                      int32_t aLayer)
+                                      int32_t aLayer,
+                                      bool aMask)
 {
   NS_PRECONDITION(aForFrame,
                   "Frame is expected to be provided to PaintBackground");
@@ -2843,7 +2844,7 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
   // renderer draw the background and bail out.
   // XXXzw this ignores aBGClipRect.
   const nsStyleDisplay* displayData = aForFrame->StyleDisplay();
-  if (displayData->mAppearance) {
+  if (displayData->mAppearance && !aMask) {
     nsITheme *theme = aPresContext->GetTheme();
     if (theme && theme->ThemeSupportsWidget(aPresContext, aForFrame,
                                             displayData->mAppearance)) {
@@ -2880,8 +2881,12 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
 
   // If we're drawing a specific layer, we don't want to draw the
   // background color.
-  const nsStyleBackground *bg = aBackgroundSC->StyleBackground();
-  if (drawBackgroundColor && aLayer >= 0) {
+
+  const nsCSSLayers &layers = aMask ? aBackgroundSC->StyleMask()->mLayers :
+                                      aBackgroundSC->StyleBackground()->mLayers;
+  //const nsStyleBackground *bg = mask ? aBackgroundSC->StyleSVGReset() : 
+  //                              aBackgroundSC->StyleBackground();
+  if ((drawBackgroundColor && aLayer >= 0) || aMask) {
     drawBackgroundColor = false;
   }
 
@@ -2915,9 +2920,10 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
     SetupDirtyRects(clipState.mBGClipArea, aDirtyRect, appUnitsPerPixel,
                     &clipState.mDirtyRect, &clipState.mDirtyRectGfx);
   } else {
-    GetBackgroundClip(bg->BottomLayer(),
+    GetBackgroundClip(layers.BottomLayer(),
                       aForFrame, aBorder, aBorderArea,
-                      aDirtyRect, (aFlags & PAINTBG_WILL_PAINT_BORDER), appUnitsPerPixel,
+                      aDirtyRect, (aFlags & PAINTBG_WILL_PAINT_BORDER),
+                      appUnitsPerPixel,
                       &clipState);
   }
 
@@ -2939,7 +2945,7 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
     return DrawResult::SUCCESS;
   }
 
-  if (bg->mImageCount < 1) {
+  if (layers.mImageCount < 1) {
     // Return if there are no background layers, all work from this point
     // onwards happens iteratively on these.
     return DrawResult::SUCCESS;
@@ -2949,16 +2955,16 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
   int32_t startLayer = aLayer;
   int32_t nLayers = 1;
   if (startLayer < 0) {
-    startLayer = (int32_t)bg->mImageCount - 1;
-    nLayers = bg->mImageCount;
+    startLayer = (int32_t)layers.mImageCount - 1;
+    nLayers = layers.mImageCount;
   }
 
   // Ensure we get invalidated for loads of the image.  We need to do
   // this here because this might be the only code that knows about the
   // association of the style data with the frame.
   if (aBackgroundSC != aForFrame->StyleContext()) {
-    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, bg, startLayer, nLayers) {
-      aForFrame->AssociateImage(bg->mLayers[i].mImage, aPresContext);
+    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, layers, startLayer, nLayers) {
+      aForFrame->AssociateImage(layers[i].mImage, aPresContext);
     }
   }
 
@@ -2971,10 +2977,10 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
   if (drawBackgroundImage) {
     bool clipSet = false;
     uint8_t currentBackgroundClip = NS_STYLE_BG_CLIP_BORDER;
-    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, bg, bg->mImageCount - 1,
-                                                              nLayers + (bg->mImageCount -
+    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, layers, layers.mImageCount - 1,
+                                                              nLayers + (layers.mImageCount -
                                                                          startLayer - 1)) {
-      const nsStyleBackground::Layer &layer = bg->mLayers[i];
+      const nsCSSLayers::Layer &layer = layers[i];
       if (!aBGClipRect) {
         if (currentBackgroundClip != layer.mClip || !clipSet) {
           currentBackgroundClip = layer.mClip;
@@ -3004,9 +3010,8 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
       if ((aLayer < 0 || i == (uint32_t)startLayer) &&
           !clipState.mDirtyRectGfx.IsEmpty()) {
         nsBackgroundLayerState state = PrepareBackgroundLayer(aPresContext, aForFrame,
-            aFlags, paintBorderArea, clipState.mBGClipArea, layer);
+            aFlags, paintBorderArea, clipState.mBGClipArea, layer, aMask);
         result &= state.mImageRenderer.PrepareResult();
-
         if (!state.mFillArea.IsEmpty()) {
           if (state.mCompositionOp != CompositionOp::OP_OVER) {
             NS_ASSERTION(ctx->CurrentOp() == CompositionOp::OP_OVER,
@@ -3016,9 +3021,9 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
 
           result &=
             state.mImageRenderer.DrawBackground(aPresContext, aRenderingContext,
-                                                state.mDestArea, state.mFillArea,
-                                                state.mAnchor + paintBorderArea.TopLeft(),
-                                                clipState.mDirtyRect);
+                                          state.mDestArea, state.mFillArea,
+                                          state.mAnchor + paintBorderArea.TopLeft(),
+                                          clipState.mDirtyRect);
 
           if (state.mCompositionOp != CompositionOp::OP_OVER) {
             ctx->SetOp(CompositionOp::OP_OVER);
@@ -3027,6 +3032,7 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
       }
     }
   }
+
 
   return result;
 }
@@ -3046,7 +3052,7 @@ nsRect
 nsCSSRendering::ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
                                                  nsIFrame* aForFrame,
                                                  const nsRect& aBorderArea,
-                                                 const nsStyleBackground::Layer& aLayer,
+                                                 const nsCSSLayers::Layer& aLayer,
                                                  nsIFrame** aAttachedToFrame)
 {
   // Compute background origin area relative to aBorderArea now as we may need
@@ -3151,13 +3157,13 @@ nsCSSRendering::ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
 static nsSize
 ComputeDrawnSizeForBackground(const CSSSizeOrRatio& aIntrinsicSize,
                               const nsSize& aBgPositioningArea,
-                              const nsStyleBackground::Size& aLayerSize)
+                              const nsCSSLayers::Size& aLayerSize)
 {
   // Size is dictated by cover or contain rules.
-  if (aLayerSize.mWidthType == nsStyleBackground::Size::eContain ||
-      aLayerSize.mWidthType == nsStyleBackground::Size::eCover) {
+  if (aLayerSize.mWidthType == nsCSSLayers::Size::eContain ||
+      aLayerSize.mWidthType == nsCSSLayers::Size::eCover) {
     nsImageRenderer::FitType fitType =
-      aLayerSize.mWidthType == nsStyleBackground::Size::eCover
+      aLayerSize.mWidthType == nsCSSLayers::Size::eCover
         ? nsImageRenderer::COVER
         : nsImageRenderer::CONTAIN;
     return nsImageRenderer::ComputeConstrainedSize(aBgPositioningArea,
@@ -3167,11 +3173,11 @@ ComputeDrawnSizeForBackground(const CSSSizeOrRatio& aIntrinsicSize,
 
   // No cover/contain constraint, use default algorithm.
   CSSSizeOrRatio specifiedSize;
-  if (aLayerSize.mWidthType == nsStyleBackground::Size::eLengthPercentage) {
+  if (aLayerSize.mWidthType == nsCSSLayers::Size::eLengthPercentage) {
     specifiedSize.SetWidth(
       aLayerSize.ResolveWidthLengthPercentage(aBgPositioningArea));
   }
-  if (aLayerSize.mHeightType == nsStyleBackground::Size::eLengthPercentage) {
+  if (aLayerSize.mHeightType == nsCSSLayers::Size::eLengthPercentage) {
     specifiedSize.SetHeight(
       aLayerSize.ResolveHeightLengthPercentage(aBgPositioningArea));
   }
@@ -3187,7 +3193,8 @@ nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
                                        uint32_t aFlags,
                                        const nsRect& aBorderArea,
                                        const nsRect& aBGClipRect,
-                                       const nsStyleBackground::Layer& aLayer)
+                                       const nsCSSLayers::Layer& aLayer,
+                                       bool aMask)
 {
   /*
    * The properties we need to keep in mind when drawing background
@@ -3325,7 +3332,8 @@ nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
   }
   state.mFillArea.IntersectRect(state.mFillArea, bgClipRect);
 
-  state.mCompositionOp = GetGFXBlendMode(aLayer.mBlendMode);
+  state.mCompositionOp = aMask ? GetGFXBlendModeFromMaskComposite(aLayer.mComposite) :
+                                 GetGFXBlendMode(aLayer.mBlendMode);
 
   return state;
 }
@@ -3335,7 +3343,7 @@ nsCSSRendering::GetBackgroundLayerRect(nsPresContext* aPresContext,
                                        nsIFrame* aForFrame,
                                        const nsRect& aBorderArea,
                                        const nsRect& aClipRect,
-                                       const nsStyleBackground::Layer& aLayer,
+                                       const nsCSSLayers::Layer& aLayer,
                                        uint32_t aFlags)
 {
   Sides skipSides = aForFrame->GetSkipSides();
@@ -4807,7 +4815,7 @@ nsImageRenderer::ComputeIntrinsicSize()
       //     and that element's ratio, if it matches.  If it doesn't match, it
       //     should have no width/height or ratio.  See element() in CSS images:
       //     <http://dev.w3.org/csswg/css-images-4/#element-notation>.
-      //     Make sure to change nsStyleBackground::Size::DependsOnFrameSize
+      //     Make sure to change nsCSSLayers::Size::DependsOnFrameSize
       //     when fixing this!
       if (mPaintServerFrame) {
         // SVG images have no intrinsic size
@@ -4982,7 +4990,8 @@ nsImageRenderer::Draw(nsPresContext*       aPresContext,
                       const nsRect&        aDest,
                       const nsRect&        aFill,
                       const nsPoint&       aAnchor,
-                      const CSSIntRect&    aSrc)
+                      const CSSIntRect&    aSrc,
+                      bool                 aMask)
 {
   if (!IsReady()) {
     NS_NOTREACHED("Ensure PrepareImage() has returned true before calling me");

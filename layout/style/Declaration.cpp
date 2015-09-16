@@ -393,6 +393,9 @@ Declaration::GetValue(nsCSSProperty aProperty, nsAString& aValue,
       }
       break;
     }
+    case eCSSProperty_mask: {
+      break;
+    }
     case eCSSProperty_background: {
       // We know from above that all subproperties were specified.
       // However, we still can't represent that in the shorthand unless

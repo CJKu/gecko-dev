@@ -1273,23 +1273,88 @@ nsStyleFilter::SetDropShadow(nsCSSShadowArray* aDropShadow)
 }
 
 // --------------------
-// nsStyleSVGReset
+// nsStyleMask
 //
-nsStyleSVGReset::nsStyleSVGReset() 
+nsStyleMask::nsStyleMask()
 {
-    MOZ_COUNT_CTOR(nsStyleSVGReset);
-    mStopColor               = NS_RGB(0,0,0);
-    mFloodColor              = NS_RGB(0,0,0);
-    mLightingColor           = NS_RGB(255,255,255);
-    mMask                    = nullptr;
-    mStopOpacity             = 1.0f;
-    mFloodOpacity            = 1.0f;
-    mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
-    mVectorEffect            = NS_STYLE_VECTOR_EFFECT_NONE;
-    mMaskType                = NS_STYLE_MASK_TYPE_LUMINANCE;
+  MOZ_COUNT_CTOR(nsStyleMask);
+
+  // TODO : remove this.
+  mLayers.mImageCount = 0;
 }
 
-nsStyleSVGReset::~nsStyleSVGReset() 
+nsStyleMask::~nsStyleMask()
+{
+  MOZ_COUNT_DTOR(nsStyleMask);
+}
+
+nsStyleMask::nsStyleMask(const nsStyleMask& aSource)
+  : mLayers(aSource.mLayers)
+{
+  MOZ_COUNT_CTOR(nsStyleMask);
+}
+
+nsChangeHint nsStyleMask::CalcDifference(const nsStyleMask& aOther) const
+{
+  const nsStyleMask* moreLayers =
+    mLayers.mImageCount > aOther.mLayers.mImageCount ? this : &aOther;
+  const nsStyleMask* lessLayers =
+    mLayers.mImageCount > aOther.mLayers.mImageCount ? &aOther : this;
+
+  bool hasVisualDifference = false;
+
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, moreLayers->mLayers) {
+    if (i < lessLayers->mLayers.mImageCount) {
+      if (moreLayers->mLayers[i] != lessLayers->mLayers[i]) {
+        if ((moreLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element) ||
+            (lessLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element))
+          return NS_CombineHint(nsChangeHint_UpdateEffects,
+                                nsChangeHint_RepaintFrame);
+        hasVisualDifference = true;
+      }
+    } else {
+      if (moreLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element)
+        return NS_CombineHint(nsChangeHint_UpdateEffects,
+                              nsChangeHint_RepaintFrame);
+      hasVisualDifference = true;
+    }
+  }
+
+  if (mLayers.mClipCount != aOther.mLayers.mClipCount ||
+      mLayers.mOriginCount != aOther.mLayers.mOriginCount ||
+      mLayers.mRepeatCount != aOther.mLayers.mRepeatCount ||
+      mLayers.mPositionCount != aOther.mLayers.mPositionCount ||
+      mLayers.mSizeCount != aOther.mLayers.mSizeCount||
+      mLayers.mModeCount != aOther.mLayers.mModeCount||
+      mLayers.mCompositeCount != aOther.mLayers.mCompositeCount) {
+    return nsChangeHint_NeutralChange;
+  }
+
+  if (hasVisualDifference)
+    return nsChangeHint_RepaintFrame;
+
+  return NS_STYLE_HINT_NONE;
+
+}
+
+// --------------------
+// nsStyleSVGReset
+//
+nsStyleSVGReset::nsStyleSVGReset()
+{
+  MOZ_COUNT_CTOR(nsStyleSVGReset);
+  mStopColor               = NS_RGB(0,0,0);
+  mFloodColor              = NS_RGB(0,0,0);
+  mLightingColor           = NS_RGB(255,255,255);
+  mMask                    = nullptr;
+  mStopOpacity             = 1.0f;
+  mFloodOpacity            = 1.0f;
+  mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
+  mVectorEffect            = NS_STYLE_VECTOR_EFFECT_NONE;
+  mMaskType                = NS_STYLE_MASK_TYPE_LUMINANCE;
+}
+
+nsStyleSVGReset::~nsStyleSVGReset()
 {
   MOZ_COUNT_DTOR(nsStyleSVGReset);
 }
@@ -1368,7 +1433,7 @@ nsStyleSVGPaint::SetType(nsStyleSVGPaintType aType)
   mType = aType;
 }
 
-nsStyleSVGPaint& nsStyleSVGPaint::operator=(const nsStyleSVGPaint& aOther) 
+nsStyleSVGPaint& nsStyleSVGPaint::operator=(const nsStyleSVGPaint& aOther)
 {
   if (this == &aOther)
     return *this;
@@ -1396,7 +1461,6 @@ bool nsStyleSVGPaint::operator==(const nsStyleSVGPaint& aOther) const
     return mPaint.mColor == aOther.mPaint.mColor;
   return true;
 }
-
 
 // --------------------
 // nsStylePosition
@@ -2163,48 +2227,17 @@ nsStyleImage::operator==(const nsStyleImage& aOther) const
 //
 
 nsStyleBackground::nsStyleBackground()
-  : mAttachmentCount(1)
-  , mClipCount(1)
-  , mOriginCount(1)
-  , mRepeatCount(1)
-  , mPositionCount(1)
-  , mImageCount(1)
-  , mSizeCount(1)
-  , mBlendModeCount(1)
-  , mBackgroundColor(NS_RGBA(0, 0, 0, 0))
+  : mBackgroundColor(NS_RGBA(0, 0, 0, 0))
 {
   MOZ_COUNT_CTOR(nsStyleBackground);
-  Layer *onlyLayer = mLayers.AppendElement();
-  NS_ASSERTION(onlyLayer, "auto array must have room for 1 element");
-  onlyLayer->SetInitialValues();
 }
 
 nsStyleBackground::nsStyleBackground(const nsStyleBackground& aSource)
-  : mAttachmentCount(aSource.mAttachmentCount)
-  , mClipCount(aSource.mClipCount)
-  , mOriginCount(aSource.mOriginCount)
-  , mRepeatCount(aSource.mRepeatCount)
-  , mPositionCount(aSource.mPositionCount)
-  , mImageCount(aSource.mImageCount)
-  , mSizeCount(aSource.mSizeCount)
-  , mBlendModeCount(aSource.mBlendModeCount)
-  , mLayers(aSource.mLayers) // deep copy
+  : mLayers(aSource.mLayers)
   , mBackgroundColor(aSource.mBackgroundColor)
 {
   MOZ_COUNT_CTOR(nsStyleBackground);
-  // If the deep copy of mLayers failed, truncate the counts.
-  uint32_t count = mLayers.Length();
-  if (count != aSource.mLayers.Length()) {
-    NS_WARNING("truncating counts due to out-of-memory");
-    mAttachmentCount = std::max(mAttachmentCount, count);
-    mClipCount = std::max(mClipCount, count);
-    mOriginCount = std::max(mOriginCount, count);
-    mRepeatCount = std::max(mRepeatCount, count);
-    mPositionCount = std::max(mPositionCount, count);
-    mImageCount = std::max(mImageCount, count);
-    mSizeCount = std::max(mSizeCount, count);
-    mBlendModeCount = std::max(mSizeCount, count);
-  }
+
 }
 
 nsStyleBackground::~nsStyleBackground()
@@ -2216,8 +2249,7 @@ void
 nsStyleBackground::Destroy(nsPresContext* aContext)
 {
   // Untrack all the images stored in our layers
-  for (uint32_t i = 0; i < mImageCount; ++i)
-    mLayers[i].UntrackImages(aContext);
+  mLayers.UntrackImages(aContext);
 
   this->~nsStyleBackground();
   aContext->PresShell()->
@@ -2227,14 +2259,14 @@ nsStyleBackground::Destroy(nsPresContext* aContext)
 nsChangeHint nsStyleBackground::CalcDifference(const nsStyleBackground& aOther) const
 {
   const nsStyleBackground* moreLayers =
-    mImageCount > aOther.mImageCount ? this : &aOther;
+    mLayers.mImageCount > aOther.mLayers.mImageCount ? this : &aOther;
   const nsStyleBackground* lessLayers =
-    mImageCount > aOther.mImageCount ? &aOther : this;
+    mLayers.mImageCount > aOther.mLayers.mImageCount ? &aOther : this;
 
   bool hasVisualDifference = false;
 
-  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, moreLayers) {
-    if (i < lessLayers->mImageCount) {
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, moreLayers->mLayers) {
+    if (i < lessLayers->mLayers.mImageCount) {
       if (moreLayers->mLayers[i] != lessLayers->mLayers[i]) {
         if ((moreLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element) ||
             (lessLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element))
@@ -2249,26 +2281,25 @@ nsChangeHint nsStyleBackground::CalcDifference(const nsStyleBackground& aOther) 
       hasVisualDifference = true;
     }
   }
+  if (mLayers.mAttachmentCount != aOther.mLayers.mAttachmentCount ||
+      mLayers.mClipCount != aOther.mLayers.mClipCount ||
+      mLayers.mOriginCount != aOther.mLayers.mOriginCount ||
+      mLayers.mRepeatCount != aOther.mLayers.mRepeatCount ||
+      mLayers.mPositionCount != aOther.mLayers.mPositionCount ||
+      mLayers.mSizeCount != aOther.mLayers.mSizeCount) {
+    return nsChangeHint_NeutralChange;
+  }
 
   if (hasVisualDifference || mBackgroundColor != aOther.mBackgroundColor)
     return nsChangeHint_RepaintFrame;
-
-  if (mAttachmentCount != aOther.mAttachmentCount ||
-      mClipCount != aOther.mClipCount ||
-      mOriginCount != aOther.mOriginCount ||
-      mRepeatCount != aOther.mRepeatCount ||
-      mPositionCount != aOther.mPositionCount ||
-      mSizeCount != aOther.mSizeCount) {
-    return nsChangeHint_NeutralChange;
-  }
 
   return NS_STYLE_HINT_NONE;
 }
 
 bool nsStyleBackground::HasFixedBackground() const
 {
-  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, this) {
-    const Layer &layer = mLayers[i];
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, mLayers) {
+    const nsCSSLayers::Layer &layer = mLayers[i];
     if (layer.mAttachment == NS_STYLE_BG_ATTACHMENT_FIXED &&
         !layer.mImage.IsEmpty()) {
       return true;
@@ -2280,12 +2311,59 @@ bool nsStyleBackground::HasFixedBackground() const
 bool nsStyleBackground::IsTransparent() const
 {
   return BottomLayer().mImage.IsEmpty() &&
-         mImageCount == 1 &&
+         mLayers.mImageCount == 1 &&
          NS_GET_A(mBackgroundColor) == 0;
 }
 
+nsCSSLayers::nsCSSLayers()
+  : mAttachmentCount(1)
+  , mClipCount(1)
+  , mOriginCount(1)
+  , mRepeatCount(1)
+  , mPositionCount(1)
+  , mImageCount(1)
+  , mSizeCount(1)
+  , mModeCount(1)
+  , mBlendModeCount(1)
+  , mCompositeCount(1)
+{
+  Layer *onlyLayer = mLayers.AppendElement();
+  NS_ASSERTION(onlyLayer, "auto array must have room for 1 element");
+  onlyLayer->SetInitialValues();
+}
+
+nsCSSLayers::nsCSSLayers(const nsCSSLayers &aSource)
+  : mAttachmentCount(aSource.mAttachmentCount)
+  , mClipCount(aSource.mClipCount)
+  , mOriginCount(aSource.mOriginCount)
+  , mRepeatCount(aSource.mRepeatCount)
+  , mPositionCount(aSource.mPositionCount)
+  , mImageCount(aSource.mImageCount)
+  , mSizeCount(aSource.mModeCount)
+  , mModeCount(aSource.mModeCount)
+  , mBlendModeCount(aSource.mBlendModeCount)
+  , mCompositeCount(aSource.mCompositeCount)
+  , mLayers(aSource.mLayers) // deep copy
+{
+  // If the deep copy of mLayers failed, truncate the counts.
+  uint32_t count = mLayers.Length();
+  if (count != aSource.mLayers.Length()) {
+    NS_WARNING("truncating counts due to out-of-memory");
+    mAttachmentCount = std::max(mAttachmentCount, count);
+    mClipCount = std::max(mClipCount, count);
+    mOriginCount = std::max(mOriginCount, count);
+    mRepeatCount = std::max(mRepeatCount, count);
+    mPositionCount = std::max(mPositionCount, count);
+    mImageCount = std::max(mImageCount, count);
+    mSizeCount = std::max(mSizeCount, count);
+    mModeCount = std::max(mModeCount, count);
+    mBlendModeCount = std::max(mBlendModeCount, count);
+    mCompositeCount = std::max(mCompositeCount, count);
+  }
+}
+
 void
-nsStyleBackground::Position::SetInitialPercentValues(float aPercentVal)
+nsCSSLayers::Position::SetInitialPercentValues(float aPercentVal)
 {
   mXPosition.mPercent = aPercentVal;
   mXPosition.mLength = 0;
@@ -2296,7 +2374,7 @@ nsStyleBackground::Position::SetInitialPercentValues(float aPercentVal)
 }
 
 void
-nsStyleBackground::Position::SetInitialZeroValues()
+nsCSSLayers::Position::SetInitialZeroValues()
 {
   mXPosition.mPercent = 0;
   mXPosition.mLength = 0;
@@ -2307,7 +2385,7 @@ nsStyleBackground::Position::SetInitialZeroValues()
 }
 
 bool
-nsStyleBackground::Size::DependsOnPositioningAreaSize(const nsStyleImage& aImage) const
+nsCSSLayers::Size::DependsOnPositioningAreaSize(const nsStyleImage& aImage) const
 {
   MOZ_ASSERT(aImage.GetType() != eStyleImageType_Null,
              "caller should have handled this");
@@ -2386,13 +2464,13 @@ nsStyleBackground::Size::DependsOnPositioningAreaSize(const nsStyleImage& aImage
 }
 
 void
-nsStyleBackground::Size::SetInitialValues()
+nsCSSLayers::Size::SetInitialValues()
 {
   mWidthType = mHeightType = eAuto;
 }
 
 bool
-nsStyleBackground::Size::operator==(const Size& aOther) const
+nsCSSLayers::Size::operator==(const Size& aOther) const
 {
   MOZ_ASSERT(mWidthType < eDimensionType_COUNT,
              "bad mWidthType for this");
@@ -2410,22 +2488,22 @@ nsStyleBackground::Size::operator==(const Size& aOther) const
 }
 
 void
-nsStyleBackground::Repeat::SetInitialValues() 
+nsCSSLayers::Repeat::SetInitialValues() 
 {
   mXRepeat = NS_STYLE_BG_REPEAT_REPEAT;
   mYRepeat = NS_STYLE_BG_REPEAT_REPEAT;
 }
 
-nsStyleBackground::Layer::Layer()
+nsCSSLayers::Layer::Layer()
 {
 }
 
-nsStyleBackground::Layer::~Layer()
+nsCSSLayers::Layer::~Layer()
 {
 }
 
 void
-nsStyleBackground::Layer::SetInitialValues()
+nsCSSLayers::Layer::SetInitialValues()
 {
   mAttachment = NS_STYLE_BG_ATTACHMENT_SCROLL;
   mClip = NS_STYLE_BG_CLIP_BORDER;
@@ -2433,12 +2511,14 @@ nsStyleBackground::Layer::SetInitialValues()
   mRepeat.SetInitialValues();
   mBlendMode = NS_STYLE_BLEND_NORMAL;
   mPosition.SetInitialPercentValues(0.0f); // Initial value is "0% 0%"
-  mSize.SetInitialValues();
   mImage.SetNull();
+  mSize.SetInitialValues();
+  mComposite = NS_STYLE_MASK_COMPOSITE_ADD;
+  mMode = NS_STYLE_MASK_MODE_AUTO;
 }
 
 bool
-nsStyleBackground::Layer::RenderingMightDependOnPositioningAreaSizeChange() const
+nsCSSLayers::Layer::RenderingMightDependOnPositioningAreaSizeChange() const
 {
   // Do we even have an image?
   if (mImage.IsEmpty()) {
@@ -2450,7 +2530,7 @@ nsStyleBackground::Layer::RenderingMightDependOnPositioningAreaSizeChange() cons
 }
 
 bool
-nsStyleBackground::Layer::operator==(const Layer& aOther) const
+nsCSSLayers::Layer::operator==(const Layer& aOther) const
 {
   return mAttachment == aOther.mAttachment &&
          mClip == aOther.mClip &&

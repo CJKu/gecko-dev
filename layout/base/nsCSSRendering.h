@@ -168,7 +168,7 @@ public:
    *
    * Points are returned relative to aOriginBounds.
    */
-  static void ComputeObjectAnchorPoint(const nsStyleBackground::Position& aPos,
+  static void ComputeObjectAnchorPoint(const nsCSSLayers::Position& aPos,
                                        const nsSize& aOriginBounds,
                                        const nsSize& aImageSize,
                                        nsPoint* aTopLeft,
@@ -269,7 +269,8 @@ private:
                   const nsRect&        aDest,
                   const nsRect&        aFill,
                   const nsPoint&       aAnchor,
-                  const mozilla::CSSIntRect& aSrc);
+                  const mozilla::CSSIntRect& aSrc,
+                  bool aMask = false);
 
   /**
    * Helper method for creating a gfxDrawable from mPaintServerFrame or 
@@ -525,7 +526,7 @@ struct nsCSSRendering {
   ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
                                    nsIFrame* aForFrame,
                                    const nsRect& aBorderArea,
-                                   const nsStyleBackground::Layer& aLayer,
+                                   const nsCSSLayers::Layer& aLayer,
                                    nsIFrame** aAttachedToFrame);
 
   static nsBackgroundLayerState
@@ -534,7 +535,8 @@ struct nsCSSRendering {
                          uint32_t aFlags,
                          const nsRect& aBorderArea,
                          const nsRect& aBGClipRect,
-                         const nsStyleBackground::Layer& aLayer);
+                         const nsCSSLayers::Layer& aLayer,
+                         bool aMask = false);
 
   struct BackgroundClipState {
     nsRect mBGClipArea;  // Affected by mClippedRadii
@@ -553,7 +555,7 @@ struct nsCSSRendering {
   };
 
   static void
-  GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
+  GetBackgroundClip(const nsCSSLayers::Layer& aLayer,
                     nsIFrame* aForFrame, const nsStyleBorder& aBorder, const nsRect& aBorderArea,
                     const nsRect& aCallerDirtyRect, bool aWillPaintBorder,
                     nscoord aAppUnitsPerPixel,
@@ -606,7 +608,8 @@ struct nsCSSRendering {
                                           const nsStyleBorder& aBorder,
                                           uint32_t aFlags,
                                           nsRect* aBGClipRect = nullptr,
-                                          int32_t aLayer = -1);
+                                          int32_t aLayer = -1,
+                                          bool aMask = false);
 
   /**
    * Returns the rectangle covered by the given background layer image, taking
@@ -617,7 +620,7 @@ struct nsCSSRendering {
                                        nsIFrame* aForFrame,
                                        const nsRect& aBorderArea,
                                        const nsRect& aClipRect,
-                                       const nsStyleBackground::Layer& aLayer,
+                                       const nsCSSLayers::Layer& aLayer,
                                        uint32_t aFlags);
 
   /**
@@ -785,6 +788,18 @@ struct nsCSSRendering {
     }
   }
 
+  static CompositionOp GetGFXBlendModeFromMaskComposite(uint8_t mBlendMode) {
+    switch (mBlendMode) {
+      case NS_STYLE_MASK_COMPOSITE_ADD:       return CompositionOp::OP_OVER;
+      case NS_STYLE_MASK_COMPOSITE_SUBTRACT:  return CompositionOp::OP_OUT;
+      case NS_STYLE_MASK_COMPOSITE_INTERSECT: return CompositionOp::OP_IN;
+      case NS_STYLE_MASK_COMPOSITE_EXCLUDE:   return CompositionOp::OP_XOR;
+      default:
+        MOZ_ASSERT(false); return CompositionOp::OP_OVER;
+    }
+
+    return CompositionOp::OP_OVER;
+  }
 protected:
   static gfxRect GetTextDecorationRectInternal(const gfxPoint& aPt,
                                                const gfxSize& aLineSize,

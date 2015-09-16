@@ -2130,6 +2130,56 @@ const KTableValue nsCSSProps::kMaskTypeKTable[] = {
   eCSSKeyword_UNKNOWN, -1
 };
 
+const KTableValue nsCSSProps::kMaskRepeatKTable[] = {
+  eCSSKeyword_no_repeat,  NS_STYLE_MASK_REPEAT_NO_REPEAT,
+  eCSSKeyword_repeat,     NS_STYLE_MASK_REPEAT_REPEAT,
+  eCSSKeyword_repeat_x,   NS_STYLE_MASK_REPEAT_REPEAT_X,
+  eCSSKeyword_repeat_y,   NS_STYLE_MASK_REPEAT_REPEAT_Y,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskRepeatPartKTable[] = {
+  eCSSKeyword_no_repeat,  NS_STYLE_MASK_REPEAT_NO_REPEAT,
+  eCSSKeyword_repeat,     NS_STYLE_MASK_REPEAT_REPEAT,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskSizeKTable[] = {
+  eCSSKeyword_contain, NS_STYLE_MASK_SIZE_CONTAIN,
+  eCSSKeyword_cover,   NS_STYLE_MASK_SIZE_COVER,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskModeKTable[] = {
+  eCSSKeyword_alpha, NS_STYLE_MASK_MODE_ALPHA,
+  eCSSKeyword_luminance, NS_STYLE_MASK_MODE_LUMINANCE,
+  eCSSKeyword_auto, NS_STYLE_MASK_MODE_AUTO,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskOriginKTable[] = {
+  eCSSKeyword_border_box, NS_STYLE_MASK_ORIGIN_BORDER,
+  eCSSKeyword_padding_box, NS_STYLE_MASK_ORIGIN_PADDING,
+  eCSSKeyword_content_box, NS_STYLE_MASK_ORIGIN_CONTENT,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskPositionKTable[] = {
+  eCSSKeyword_center, NS_STYLE_MASK_POSITION_CENTER,
+  eCSSKeyword_top, NS_STYLE_MASK_POSITION_TOP,
+  eCSSKeyword_bottom, NS_STYLE_MASK_POSITION_BOTTOM,
+  eCSSKeyword_left, NS_STYLE_MASK_POSITION_LEFT,
+  eCSSKeyword_right, NS_STYLE_MASK_POSITION_RIGHT,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kMaskCompositeKTable[] = {
+  eCSSKeyword_subtract, NS_STYLE_MASK_COMPOSITE_SUBTRACT,
+  eCSSKeyword_intersect, NS_STYLE_MASK_COMPOSITE_INTERSECT,
+  eCSSKeyword_exclude, NS_STYLE_MASK_COMPOSITE_EXCLUDE,
+  eCSSKeyword_UNKNOWN,-1
+};
+
 const KTableValue nsCSSProps::kShapeRenderingKTable[] = {
   eCSSKeyword_auto, NS_STYLE_SHAPE_RENDERING_AUTO,
   eCSSKeyword_optimizespeed, NS_STYLE_SHAPE_RENDERING_OPTIMIZESPEED,
@@ -2732,6 +2782,17 @@ static const nsCSSProperty gScrollSnapTypeSubpropTable[] = {
   eCSSProperty_UNKNOWN
 };
 
+static const nsCSSProperty gMaskSubpropTable[] = {
+  eCSSProperty_mask_image,
+  /*eCSSProperty_mask_repeat,
+  eCSSProperty_mask_position,
+  eCSSProperty_mask_clip,
+  eCSSProperty_mask_origin,
+  eCSSProperty_mask_size,
+  eCSSProperty_mask_composite,
+  eCSSProperty_mask_mode,*/
+  eCSSProperty_UNKNOWN
+};
 const nsCSSProperty *const
 nsCSSProps::kSubpropertyTable[eCSSProperty_COUNT - eCSSProperty_COUNT_no_shorthands] = {
 #define CSS_PROP_PUBLIC_OR_PRIVATE(publicname_, privatename_) privatename_
@@ -2893,6 +2954,13 @@ enum BackgroundCheckCounter {
   #include "nsCSSPropList.h"
   #undef CSS_PROP_BACKGROUND
   ePropertyCount_for_Background
+};
+
+enum MaskCheckCounter {
+  #define CSS_PROP_MASK ENUM_DATA_FOR_PROPERTY
+  #include "nsCSSPropList.h"
+  #undef CSS_PROP_MASK
+  ePropertyCount_for_Mask
 };
 
 enum PositionCheckCounter {
