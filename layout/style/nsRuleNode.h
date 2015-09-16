@@ -747,6 +747,13 @@ protected:
                         const mozilla::RuleNodeCacheConditions aConditions);
 
   const void*
+    ComputeMaskData(void* aStartStruct,
+                        const nsRuleData* aRuleData,
+                        nsStyleContext* aContext, nsRuleNode* aHighestNode,
+                        RuleDetail aRuleDetail,
+                        const mozilla::RuleNodeCacheConditions aConditions);
+
+  const void*
     ComputeVariablesData(void* aStartStruct,
                          const nsRuleData* aRuleData,
                          nsStyleContext* aContext, nsRuleNode* aHighestNode,

@@ -426,7 +426,8 @@ public:
     nsSVGFilterProperty*   mFilter;
     nsSVGPaintingProperty* mMask;
     nsSVGPaintingProperty* mClipPath;
-
+    // TODO: move mLayers here?
+    
     /**
      * @return the clip-path frame, or null if there is no clip-path frame
      * @param aOK if a clip-path was specified and the designated element

@@ -2917,7 +2917,7 @@ StyleCoordToCSSValue(const nsStyleCoord& aCoord, nsCSSValue& aCSSValue)
 }
 
 static void
-SetPositionValue(const nsStyleBackground::Position& aPos, nsCSSValue& aCSSValue)
+SetPositionValue(const nsCSSLayers::Position& aPos, nsCSSValue& aCSSValue)
 {
   RefPtr<nsCSSValue::Array> posArray = nsCSSValue::Array::Create(4);
   aCSSValue.SetArrayValue(posArray.get(), eCSSUnit_Array);
@@ -3274,16 +3274,16 @@ StyleAnimationValue::ExtractComputedValue(nsCSSProperty aProperty,
         }
 
         case eCSSProperty_background_position: {
-          const nsStyleBackground *bg =
-            static_cast<const nsStyleBackground*>(styleStruct);
+          const nsCSSLayers &layers =
+            static_cast<const nsStyleBackground*>(styleStruct)->mLayers;
           nsAutoPtr<nsCSSValueList> result;
           nsCSSValueList **resultTail = getter_Transfers(result);
-          MOZ_ASSERT(bg->mPositionCount > 0, "unexpected count");
-          for (uint32_t i = 0, i_end = bg->mPositionCount; i != i_end; ++i) {
+          MOZ_ASSERT(layers.mPositionCount > 0, "unexpected count");
+          for (uint32_t i = 0, i_end = layers.mPositionCount; i != i_end; ++i) {
             nsCSSValueList *item = new nsCSSValueList;
             *resultTail = item;
             resultTail = &item->mNext;
-            SetPositionValue(bg->mLayers[i].mPosition, item->mValue);
+            SetPositionValue(layers.mLayers[i].mPosition, item->mValue);
           }
 
           aComputedValue.SetAndAdoptCSSValueListValue(result.forget(),
@@ -3292,27 +3292,27 @@ StyleAnimationValue::ExtractComputedValue(nsCSSProperty aProperty,
         }
 
         case eCSSProperty_background_size: {
-          const nsStyleBackground *bg =
-            static_cast<const nsStyleBackground*>(styleStruct);
+          const nsCSSLayers &layers =
+            static_cast<const nsStyleBackground*>(styleStruct)->mLayers;
           nsAutoPtr<nsCSSValuePairList> result;
           nsCSSValuePairList **resultTail = getter_Transfers(result);
-          MOZ_ASSERT(bg->mSizeCount > 0, "unexpected count");
-          for (uint32_t i = 0, i_end = bg->mSizeCount; i != i_end; ++i) {
+          MOZ_ASSERT(layers.mSizeCount > 0, "unexpected count");
+          for (uint32_t i = 0, i_end = layers.mSizeCount; i != i_end; ++i) {
             nsCSSValuePairList *item = new nsCSSValuePairList;
             *resultTail = item;
             resultTail = &item->mNext;
 
-            const nsStyleBackground::Size &size = bg->mLayers[i].mSize;
+            const nsCSSLayers::Size &size = layers.mLayers[i].mSize;
             switch (size.mWidthType) {
-              case nsStyleBackground::Size::eContain:
-              case nsStyleBackground::Size::eCover:
+              case nsCSSLayers::Size::eContain:
+              case nsCSSLayers::Size::eCover:
                 item->mXValue.SetIntValue(size.mWidthType,
                                           eCSSUnit_Enumerated);
                 break;
-              case nsStyleBackground::Size::eAuto:
+              case nsCSSLayers::Size::eAuto:
                 item->mXValue.SetAutoValue();
                 break;
-              case nsStyleBackground::Size::eLengthPercentage:
+              case nsCSSLayers::Size::eLengthPercentage:
                 // XXXbz is there a good reason we can't just
                 // SetCalcValue(&size.mWidth, item->mXValue) here?
                 if (!size.mWidth.mHasPercent &&
@@ -3332,14 +3332,14 @@ StyleAnimationValue::ExtractComputedValue(nsCSSProperty aProperty,
             }
 
             switch (size.mHeightType) {
-              case nsStyleBackground::Size::eContain:
-              case nsStyleBackground::Size::eCover:
+              case nsCSSLayers::Size::eContain:
+              case nsCSSLayers::Size::eCover:
                 // leave it null
                 break;
-              case nsStyleBackground::Size::eAuto:
+              case nsCSSLayers::Size::eAuto:
                 item->mYValue.SetAutoValue();
                 break;
-              case nsStyleBackground::Size::eLengthPercentage:
+              case nsCSSLayers::Size::eLengthPercentage:
                 // XXXbz is there a good reason we can't just
                 // SetCalcValue(&size.mHeight, item->mYValue) here?
                 if (!size.mHeight.mHasPercent &&
@@ -3446,7 +3446,9 @@ StyleAnimationValue::ExtractComputedValue(nsCSSProperty aProperty,
         }
 
         default:
-          MOZ_ASSERT(false, "missing property implementation");
+          // TODO:
+          // eCSSProperty_mask_position
+          //MOZ_ASSERT(false, "missing property implementation");
           return false;
       };
       return true;

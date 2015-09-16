@@ -36,6 +36,7 @@ STYLE_STRUCTS = [("INHERITED",) + x for x in [
 ]] + [("RESET",) + x for x in [
     # Reset style structs.
     ("Background",     "nullptr",   NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
+    ("Mask",           "nullptr",   NORMAL_DEP + LENGTH_DEP),
     ("Position",       "nullptr",   NORMAL_DEP + LENGTH_DEP),
     ("TextReset",      "nullptr",   NORMAL_DEP + LENGTH_DEP + COLOR_DEP),
     ("Display",        "nullptr",   NORMAL_DEP + LENGTH_DEP),

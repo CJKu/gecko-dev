@@ -393,6 +393,121 @@ Declaration::GetValue(nsCSSProperty aProperty, nsAString& aValue,
       }
       break;
     }
+    case eCSSProperty_mask: {
+      const nsCSSValueList *image =
+        data->ValueFor(eCSSProperty_mask_image)->
+        GetListValue();
+      const nsCSSValuePairList *repeat =
+        data->ValueFor(eCSSProperty_mask_repeat)->
+        GetPairListValue();
+      const nsCSSValueList *position =
+        data->ValueFor(eCSSProperty_mask_position)->
+        GetListValue();
+      const nsCSSValueList *clip =
+        data->ValueFor(eCSSProperty_mask_clip)->
+        GetListValue();
+      const nsCSSValueList *origin =
+        data->ValueFor(eCSSProperty_mask_origin)->
+        GetListValue();
+      const nsCSSValuePairList *size =
+        data->ValueFor(eCSSProperty_mask_size)->
+        GetPairListValue();
+      const nsCSSValueList *composite =
+        data->ValueFor(eCSSProperty_mask_composite)->
+        GetListValue();
+      const nsCSSValueList *mode =
+        data->ValueFor(eCSSProperty_mask_mode)->
+        GetListValue();
+      for (;;) {
+        image->mValue.AppendToString(eCSSProperty_mask_image, aValue,
+                                     aSerialization);
+                aValue.Append(char16_t(' '));
+
+        mode->mValue.AppendToString(eCSSProperty_mask_mode,
+                                          aValue, aSerialization);
+        aValue.Append(char16_t(' '));
+        repeat->mXValue.AppendToString(eCSSProperty_mask_repeat, aValue,
+                                       aSerialization);
+        if (repeat->mYValue.GetUnit() != eCSSUnit_Null) {
+          repeat->mYValue.AppendToString(eCSSProperty_mask_repeat, aValue,
+                                         aSerialization);
+        }
+        aValue.Append(char16_t(' '));
+        position->mValue.AppendToString(eCSSProperty_mask_position,
+                                        aValue, aSerialization);
+        
+        if (size->mXValue.GetUnit() != eCSSUnit_Auto ||
+            size->mYValue.GetUnit() != eCSSUnit_Auto) {
+          aValue.Append(char16_t(' '));
+          aValue.Append(char16_t('/'));
+          aValue.Append(char16_t(' '));
+          size->mXValue.AppendToString(eCSSProperty_mask_size, aValue,
+                                       aSerialization);
+          aValue.Append(char16_t(' '));
+          size->mYValue.AppendToString(eCSSProperty_mask_size, aValue,
+                                       aSerialization);
+        }
+
+        MOZ_ASSERT(clip->mValue.GetUnit() == eCSSUnit_Enumerated &&
+                   origin->mValue.GetUnit() == eCSSUnit_Enumerated,
+                   "should not have inherit/initial within list");
+
+        if (clip->mValue.GetIntValue() != NS_STYLE_MASK_CLIP_BORDER ||
+            origin->mValue.GetIntValue() != NS_STYLE_MASK_ORIGIN_PADDING) {
+          MOZ_ASSERT(nsCSSProps::kKeywordTableTable[
+                       eCSSProperty_mask_origin] ==
+                     nsCSSProps::kMaskOriginKTable);
+          MOZ_ASSERT(nsCSSProps::kKeywordTableTable[
+                       eCSSProperty_mask_clip] ==
+                     nsCSSProps::kMaskOriginKTable);
+          static_assert(NS_STYLE_MASK_CLIP_BORDER ==
+                        NS_STYLE_MASK_ORIGIN_BORDER &&
+                        NS_STYLE_MASK_CLIP_PADDING ==
+                        NS_STYLE_MASK_ORIGIN_PADDING &&
+                        NS_STYLE_MASK_CLIP_CONTENT ==
+                        NS_STYLE_MASK_ORIGIN_CONTENT,
+                        "mask-clip and mask-origin style constants must agree");
+          aValue.Append(char16_t(' '));
+          origin->mValue.AppendToString(eCSSProperty_mask_origin, aValue,
+                                        aSerialization);
+
+          if (clip->mValue != origin->mValue) {
+            aValue.Append(char16_t(' '));
+            clip->mValue.AppendToString(eCSSProperty_mask_clip, aValue,
+                                        aSerialization);
+          }
+        }
+
+        aValue.Append(char16_t(' '));
+        composite->mValue.AppendToString(eCSSProperty_mask_composite,
+                                          aValue, aSerialization);
+        image = image->mNext;
+        repeat = repeat->mNext;
+        position = position->mNext;
+        clip = clip->mNext;
+        origin = origin->mNext;
+        size = size->mNext;
+        composite = composite->mNext;
+        mode = mode->mNext;
+
+        if (!image) {
+          if (repeat || position || clip || origin || size) {
+            // Uneven length lists, so can't be serialized as shorthand.
+            aValue.Truncate();
+            return;
+          }
+          break;
+        }
+        if (!repeat || !position || !clip || !origin || !size) {
+          // Uneven length lists, so can't be serialized as shorthand.
+          aValue.Truncate();
+          return;
+        }
+        aValue.Append(char16_t(','));
+        aValue.Append(char16_t(' '));
+      }
+      break;
+    }
     case eCSSProperty_background: {
       // We know from above that all subproperties were specified.
       // However, we still can't represent that in the shorthand unless
