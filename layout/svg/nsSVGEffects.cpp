@@ -563,6 +563,7 @@ nsSVGEffects::GetEffectProperties(nsIFrame *aFrame)
   }
   result.mMask =
     GetPaintingProperty(style->mMask, aFrame, MaskProperty());
+    
   return result;
 }
 

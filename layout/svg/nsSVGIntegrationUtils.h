@@ -130,6 +130,7 @@ public:
   static void
   PaintFramesWithEffects(gfxContext& aCtx,
                          nsIFrame* aFrame, const nsRect& aDirtyRect,
+                         const nsRect& aBoaderRect,
                          nsDisplayListBuilder* aBuilder,
                          mozilla::layers::LayerManager* aManager);
 

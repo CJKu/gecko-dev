@@ -1269,6 +1269,14 @@ nsStyleFilter::SetDropShadow(nsCSSShadowArray* aDropShadow)
 // nsStyleSVGReset
 //
 nsStyleSVGReset::nsStyleSVGReset() 
+: mClipCount(1),
+  mOriginCount(1),
+  mRepeatCount(1),
+  mPositionCount(1),
+  mImageCount(0),
+  mSizeCount(1),
+  mModeCount(1),
+  mCompositeCount(1)
 {
     MOZ_COUNT_CTOR(nsStyleSVGReset);
     mStopColor               = NS_RGB(0,0,0);
@@ -1280,6 +1288,10 @@ nsStyleSVGReset::nsStyleSVGReset()
     mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
     mVectorEffect            = NS_STYLE_VECTOR_EFFECT_NONE;
     mMaskType                = NS_STYLE_MASK_TYPE_LUMINANCE;
+
+    nsStyleBackground::Layer *onlyLayer = mLayers.AppendElement();
+    NS_ASSERTION(onlyLayer, "auto array must have room for 1 element");
+    onlyLayer->SetInitialValues();
 }
 
 nsStyleSVGReset::~nsStyleSVGReset() 
@@ -1288,6 +1300,13 @@ nsStyleSVGReset::~nsStyleSVGReset()
 }
 
 nsStyleSVGReset::nsStyleSVGReset(const nsStyleSVGReset& aSource)
+  : mClipCount(aSource.mClipCount)
+  , mOriginCount(aSource.mOriginCount)
+  , mRepeatCount(aSource.mRepeatCount)
+  , mPositionCount(aSource.mPositionCount)
+  , mImageCount(aSource.mImageCount)
+  , mSizeCount(aSource.mSizeCount)
+  , mLayers(aSource.mLayers) // deep copy
 {
   MOZ_COUNT_CTOR(nsStyleSVGReset);
   mStopColor = aSource.mStopColor;
@@ -1301,6 +1320,17 @@ nsStyleSVGReset::nsStyleSVGReset(const nsStyleSVGReset& aSource)
   mDominantBaseline = aSource.mDominantBaseline;
   mVectorEffect = aSource.mVectorEffect;
   mMaskType = aSource.mMaskType;
+
+  uint32_t count = mLayers.Length();
+  if (count != aSource.mLayers.Length()) {
+    NS_WARNING("truncating counts due to out-of-memory");
+    mClipCount = std::max(mClipCount, count);
+    mOriginCount = std::max(mOriginCount, count);
+    mRepeatCount = std::max(mRepeatCount, count);
+    mPositionCount = std::max(mPositionCount, count);
+    mImageCount = std::max(mImageCount, count);
+    mSizeCount = std::max(mSizeCount, count);
+  }
 }
 
 nsChangeHint nsStyleSVGReset::CalcDifference(const nsStyleSVGReset& aOther) const

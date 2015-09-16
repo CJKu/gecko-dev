@@ -661,6 +661,13 @@ public:
   static const KTableValue kListStylePositionKTable[];
   static const KTableValue kListStyleKTable[];
   static const KTableValue kMaskTypeKTable[];
+  static const KTableValue kMaskRepeatKTable[];
+  static const KTableValue kMaskRepeatPartKTable[];
+  static const KTableValue kMaskOriginKTable[];
+  static const KTableValue kMaskPositionKTable[];
+  static const KTableValue kMaskSizeKTable[];
+  static const KTableValue kMaskModeKTable[];
+  static const KTableValue kMaskCompositeKTable[];
   static const KTableValue kMathVariantKTable[];
   static const KTableValue kMathDisplayKTable[];
   static const KTableValue kContainKTable[];

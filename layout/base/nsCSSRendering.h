@@ -600,6 +600,12 @@ struct nsCSSRendering {
                                           nsRect* aBGClipRect = nullptr,
                                           int32_t aLayer = -1);
 
+  static DrawResult PaintMask(nsPresContext* aPresContext,
+                                    gfxContext& aContext,
+                                    nsIFrame* aForFrame,
+                                    const nsRect& aDirtyRect,
+                                    const nsRect& aBorderArea,
+                                    int32_t aLayer = -1);
   /**
    * Returns the rectangle covered by the given background layer image, taking
    * into account background positioning, sizing, and repetition, but not
