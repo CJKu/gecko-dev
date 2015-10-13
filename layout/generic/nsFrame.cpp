@@ -797,16 +797,16 @@ nsFrame::DidSetStyleContext(nsStyleContext* aOldStyleContext)
     }
   }
 
-  const nsStyleSVGReset *oldSVGReset = aOldStyleContext ?
-                                   aOldStyleContext->StyleSVGReset() :
+  const nsStyleMask *oldMask = aOldStyleContext ?
+                                   aOldStyleContext->StyleMask() :
                                    nullptr;
-  const nsStyleSVGReset *newSVGReset = StyleSVGReset();
-  if (oldSVGReset) {
-    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, oldSVGReset) {
-      // If there is an image in oldSVGReset that's not in newSVGReset, drop it.
-      if (i >= newSVGReset->mImageCount ||
-          !oldSVGReset->mLayers[i].mImage.ImageDataEquals(newSVGReset->mLayers[i].mImage)) {
-        const nsStyleImage& oldImage = oldSVGReset->mLayers[i].mImage;
+  const nsStyleMask *newMask = StyleMask();
+  if (oldMask) {
+    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, oldMask) {
+      // If there is an image in oldMask that's not in newMask, drop it.
+      if (i >= newMask->mImageCount ||
+          !oldMask->mLayers[i].mImage.ImageDataEquals(newMask->mLayers[i].mImage)) {
+        const nsStyleImage& oldImage = oldMask->mLayers[i].mImage;
         if (oldImage.GetType() != eStyleImageType_Image) {
           continue;
         }
@@ -817,11 +817,11 @@ nsFrame::DidSetStyleContext(nsStyleContext* aOldStyleContext)
     }
   }
 
-  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, newSVGReset) {
-    // If there is an image in newSVGReset that's not in oldBG, add it.
-    if (!oldBG || i >= oldBG->mImageCount ||
-        !newSVGReset->mLayers[i].mImage.ImageDataEquals(oldBG->mLayers[i].mImage)) {
-      const nsStyleImage& newImage = newSVGReset->mLayers[i].mImage;
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, newMask) {
+    // If there is an image in newMask that's not in oldMask, add it.
+    if (!oldMask || i >= oldMask->mImageCount ||
+        !newMask->mLayers[i].mImage.ImageDataEquals(oldMask->mLayers[i].mImage)) {
+      const nsStyleImage& newImage = newMask->mLayers[i].mImage;
       if (newImage.GetType() != eStyleImageType_Image) {
         continue;
       }

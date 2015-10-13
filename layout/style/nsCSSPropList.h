@@ -135,6 +135,7 @@
 #define CSS_PROP_FONT(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) CSS_PROP(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, Font, stylestructoffset_, animtype_)
 #define CSS_PROP_COLOR(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) CSS_PROP(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, Color, stylestructoffset_, animtype_)
 #define CSS_PROP_BACKGROUND(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) CSS_PROP(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, Background, stylestructoffset_, animtype_)
+#define CSS_PROP_MASK(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) CSS_PROP(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, Mask, stylestructoffset_, animtype_)
 #define CSS_PROP_LIST(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) CSS_PROP(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, List, stylestructoffset_, animtype_)
 #define CSS_PROP_POSITION(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) CSS_PROP(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, Position, stylestructoffset_, animtype_)
 #define CSS_PROP_TEXT(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) CSS_PROP(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, Text, stylestructoffset_, animtype_)
@@ -206,6 +207,10 @@
 #ifndef CSS_PROP_BACKGROUND
 #define CSS_PROP_BACKGROUND(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) /* nothing */
 #define DEFINED_CSS_PROP_BACKGROUND
+#endif
+#ifndef CSS_PROP_MASK
+#define CSS_PROP_MASK(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) /* nothing */
+#define DEFINED_CSS_PROP_MASK
 #endif
 #ifndef CSS_PROP_LIST
 #define CSS_PROP_LIST(name_, id_, method_, flags_, pref_, parsevariant_, kwtable_, stylestructoffset_, animtype_) /* nothing */
@@ -3977,7 +3982,13 @@ CSS_PROP_SVG(
     nullptr,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
-CSS_PROP_SVGRESET(
+CSS_PROP_SHORTHAND(
+    mask,
+    mask,
+    Mask,
+    CSS_PROPERTY_PARSE_FUNCTION,
+    "")
+CSS_PROP_MASK(
     mask-image,
     mask_image,
     MaskImage,
@@ -3993,7 +4004,7 @@ CSS_PROP_SVGRESET(
     nullptr,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
-CSS_PROP_SVGRESET(
+CSS_PROP_MASK(
     mask-repeat,
     mask_repeat,
     MaskRepeat,
@@ -4006,7 +4017,7 @@ CSS_PROP_SVGRESET(
     kMaskRepeatKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
-CSS_PROP_SVGRESET(
+CSS_PROP_MASK(
     mask-origin,
     mask_origin,
     MaskOrigin,
@@ -4019,7 +4030,7 @@ CSS_PROP_SVGRESET(
     kMaskOriginKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
-CSS_PROP_SVGRESET(
+CSS_PROP_MASK(
     mask-clip,
     mask_clip,
     MaskClip,
@@ -4035,7 +4046,7 @@ CSS_PROP_SVGRESET(
 // TBD
 // Copy from background-position, which animation type is eStyleAnimType_Custom
 // Need to do something in StyleAnimationValue::ExtractComputedValue.
-CSS_PROP_SVGRESET(
+CSS_PROP_MASK(
     mask-position,
     mask_position,
     MaskPosition,
@@ -4050,7 +4061,7 @@ CSS_PROP_SVGRESET(
     kMaskPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
-CSS_PROP_SVGRESET(
+CSS_PROP_MASK(
     mask-size,
     mask_size,
     MaskSize,
@@ -4065,7 +4076,7 @@ CSS_PROP_SVGRESET(
     kMaskSizeKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
-CSS_PROP_SVGRESET(
+CSS_PROP_MASK(
     mask-mode,
     mask_mode,
     MaskMode,
@@ -4078,7 +4089,7 @@ CSS_PROP_SVGRESET(
     kMaskModeKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
-CSS_PROP_SVGRESET(
+CSS_PROP_MASK(
     mask-composite,
     mask_composite,
     MaskComposite,
@@ -4089,17 +4100,6 @@ CSS_PROP_SVGRESET(
     "",
     VARIANT_KEYWORD, // used by list parsing
     kMaskCompositeKTable,
-    CSS_PROP_NO_OFFSET,
-    eStyleAnimType_None)    
-CSS_PROP_SVGRESET(
-    mask,
-    mask,
-    Mask,
-    CSS_PROPERTY_PARSE_VALUE |
-        CSS_PROPERTY_CREATES_STACKING_CONTEXT,
-    "",
-    VARIANT_HUO,
-    nullptr,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_SVGRESET(
@@ -4335,6 +4335,7 @@ CSS_PROP_FONT(
 #undef CSS_PROP_FONT
 #undef CSS_PROP_COLOR
 #undef CSS_PROP_BACKGROUND
+#undef CSS_PROP_MASK
 #undef CSS_PROP_LIST
 #undef CSS_PROP_POSITION
 #undef CSS_PROP_TEXT
@@ -4374,6 +4375,10 @@ CSS_PROP_FONT(
 #ifdef DEFINED_CSS_PROP_BACKGROUND
 #undef CSS_PROP_BACKGROUND
 #undef DEFINED_CSS_PROP_BACKGROUND
+#endif
+#ifdef DEFINED_CSS_PROP_MASK
+#undef CSS_PROP_MASK
+#undef DEFINED_CSS_PROP_MASK
 #endif
 #ifdef DEFINED_CSS_PROP_LIST
 #undef CSS_PROP_LIST

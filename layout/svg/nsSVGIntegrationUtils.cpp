@@ -152,9 +152,11 @@ nsSVGIntegrationUtils::UsingEffectsForFrame(const nsIFrame* aFrame)
   // does not adversely affect any of our callers. Therefore we don't bother
   // checking the SDL prefs here, since we don't know if we're being called for
   // painting or hit-testing anyway.
-  const nsStyleSVGReset *style = aFrame->StyleSVGReset();
-  return (style->HasFilters() ||
-          style->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE || style->mMask || (style->mImageCount != 0));
+  const nsStyleSVGReset *svg = aFrame->StyleSVGReset();
+  const nsStyleMask     *mask = aFrame->StyleMask();
+  return (svg->HasFilters() ||
+          svg->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE || svg->mMask || 
+          mask->mImageCount != 0);
 }
 
 // For non-SVG frames, this gives the offset to the frame's "user space".
@@ -410,7 +412,7 @@ void
 nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
                                               nsIFrame* aFrame,
                                               const nsRect& aDirtyRect,
-                                              const nsRect& aBoaderRect,
+                                              const nsRect& aBorderRect,
                                               nsDisplayListBuilder* aBuilder,
                                               LayerManager *aLayerManager)
 {
@@ -510,7 +512,7 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
   aContext.SetMatrix(aContext.CurrentMatrix().Translate(devPixelOffsetToUserSpace));
   gfxMatrix cssPxToDevPxMatrix = GetCSSPxToDevPxMatrix(aFrame);
 
-  const nsStyleSVGReset *style = firstFrame->StyleSVGReset();
+  const nsStyleMask *style = firstFrame->StyleMask();
 
   bool complexEffects = false;
   /* Check if we need to do additional operations on this child's
@@ -607,7 +609,7 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
     uint32_t flags = aBuilder->GetBackgroundPaintFlags();
     nsBackgroundLayerState state =
       nsCSSRendering::PrepareBackgroundLayer(presContext, aFrame, flags,
-                                             aBoaderRect, aBoaderRect, layer);
+                                             aBorderRect, aBorderRect, layer);
 
     // TBD: <gradient>
     //nsImageRenderer renderer(aFrame, &layer.mImage, 0);
@@ -669,6 +671,12 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
       float yScale = float(state.mDestArea.width) / (maskSize.width * appUnitsPerDevPixel);
       float xScale = float(state.mDestArea.height) / (maskSize.height * appUnitsPerDevPixel);
       maskPattern.mMatrix.PreScale(xScale, yScale);
+
+      // mask-position
+      nsPoint pos = state.mFillArea.TopLeft() - aBorderRect.TopLeft();
+      float xPos = float(pos.x) / appUnitsPerDevPixel;
+      float yPos = float(pos.y) / appUnitsPerDevPixel;
+      maskPattern.mMatrix.PreTranslate(xPos, yPos);
 
       // Apply mask.
       // repeat-x or repeat-y

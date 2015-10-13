@@ -39,7 +39,7 @@ class imgIContainer;
 
 // Bits for each struct.
 // NS_STYLE_INHERIT_BIT defined in nsStyleStructFwd.h
-#define NS_STYLE_INHERIT_MASK              0x000ffffff
+#define NS_STYLE_INHERIT_MASK              0x001ffffff
 
 // Bits for inherited structs.
 #define NS_STYLE_INHERITED_STRUCT_MASK \
@@ -594,6 +594,46 @@ struct nsStyleBackground {
   // Not inline because it uses an nsCOMPtr<imgIRequest>
   // FIXME: Should be in nsStyleStructInlines.h.
   bool HasFixedBackground() const;
+};
+
+struct nsStyleMask {
+  nsStyleMask();
+  nsStyleMask(const nsStyleMask& aOther);
+  ~nsStyleMask();
+
+  void* operator new(size_t sz, nsPresContext* aContext) CPP_THROW_NEW {
+    return aContext->PresShell()->
+      AllocateByObjectID(nsPresArena::nsStyleMask_id, sz);
+  }
+
+  void Destroy(nsPresContext* aContext);
+
+  nsChangeHint CalcDifference(const nsStyleMask& aOther) const;
+  static nsChangeHint MaxDifference() {
+    return NS_CombineHint(nsChangeHint_UpdateEffects,
+                          NS_CombineHint(NS_STYLE_HINT_VISUAL,
+                                         nsChangeHint_NeutralChange));
+  }
+  static nsChangeHint DifferenceAlwaysHandledForDescendants() {
+    // CalcDifference never returns the reflow hints that are sometimes
+    // handled for descendants at all.
+    return nsChangeHint(0);
+  }
+
+
+  // Borrow from nsStyleBackground.
+  // We need mask-image, mask-repeat, mask-position, mask-clip, mask-origin and mask-size
+  // nsStyleBackgound has mImage, mRepeat, mPosition, mClip, mOrigin and mSize.
+  // Take advange of it while prototyping.
+  uint32_t mClipCount,
+           mOriginCount,
+           mRepeatCount,
+           mPositionCount,
+           mImageCount,
+           mSizeCount,
+           mModeCount,
+           mCompositeCount;
+  nsAutoTArray<nsStyleBackground::Layer, 1> mLayers;
 };
 
 // See https://bugzilla.mozilla.org/show_bug.cgi?id=271586#c43 for why
@@ -3172,10 +3212,6 @@ struct nsStyleSVGReset {
       AllocateByObjectID(nsPresArena::nsStyleSVGReset_id, sz);
   }
   void Destroy(nsPresContext* aContext) {
-    // Untrack all the images stored in our layers
-    for (uint32_t i = 0; i < mImageCount; ++i)
-      mLayers[i].UntrackImages(aContext);
-
     this->~nsStyleSVGReset();
     aContext->PresShell()->
       FreeByObjectID(nsPresArena::nsStyleSVGReset_id, this);
@@ -3215,56 +3251,6 @@ struct nsStyleSVGReset {
   uint8_t          mDominantBaseline; // [reset] see nsStyleConsts.h
   uint8_t          mVectorEffect;     // [reset] see nsStyleConsts.h
   uint8_t          mMaskType;         // [reset] see nsStyleConsts.h
-
-  /*struct Layer;
-  //friend struct Layer;
-  struct Layer {
-    uint8_t mClip;                      // [reset] See nsStyleConsts.h
-    uint8_t mOrigin;                    // [reset] See nsStyleConsts.h
-    Repeat mRepeat;                     // [reset] See nsStyleConsts.h
-    Position mPosition;                 // [reset]
-    nsStyleImage mImage;                // [reset]
-    Size mSize;                         // [reset]
-    uint8_t mComposite;
-    uint8_t mMode;
-
-    // Initializes only mImage
-    Layer();
-    ~Layer();
-
-    // Register/unregister images with the document. We do this only
-    // after the dust has settled in ComputeSVGResetData.
-    void TrackImages(nsPresContext* aContext) {
-      if (mImage.GetType() == eStyleImageType_Image)
-        mImage.TrackImage(aContext);
-    }
-    void UntrackImages(nsPresContext* aContext) {
-      if (mImage.GetType() == eStyleImageType_Image)
-        mImage.UntrackImage(aContext);
-    }
-
-    bool RenderingMightDependOnPositioningAreaSizeChange() const;
-
-    // An equality operator that compares the images using URL-equality
-    // rather than pointer-equality.
-    bool operator==(const Layer& aOther) const;
-    bool operator!=(const Layer& aOther) const {
-      return !(*this == aOther);
-    }
-  };*/
-  // Borrow from nsStyleBackground.
-  // We need mask-image, mask-repeat, mask-position, mask-clip, mask-origin and mask-size
-  // nsStyleBackgound has mImage, mRepeat, mPosition, mClip, mOrigin and mSize.
-  // Take advange of it while prototyping.
-  uint32_t mClipCount,
-           mOriginCount,
-           mRepeatCount,
-           mPositionCount,
-           mImageCount,
-           mSizeCount,
-           mModeCount,
-           mCompositeCount;
-  nsAutoTArray<nsStyleBackground::Layer, 1> mLayers;
 };
 
 struct nsStyleVariables {

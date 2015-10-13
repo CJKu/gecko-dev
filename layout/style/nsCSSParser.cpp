@@ -782,6 +782,7 @@ protected:
 
   // Property specific parsing routines
   bool ParseBackground();
+  bool ParseMask();
 
   struct BackgroundParseState {
     nsCSSValue&  mColor;
@@ -10304,6 +10305,8 @@ CSSParserImpl::ParsePropertyByFunction(nsCSSProperty aPropID)
     return ParseScrollSnapType();
   case eCSSProperty_all:
     return ParseAll();
+  case eCSSProperty_mask:
+    return ParseMask();
   case eCSSProperty_mask_repeat:
      return ParseMaskRepeat();
   case eCSSProperty_mask_position:
@@ -10579,6 +10582,29 @@ BoxPositionMaskToCSSValue(int32_t aMask, bool isX)
   }
 
   return nsCSSValue(val, eCSSUnit_Enumerated);
+}
+
+bool
+CSSParserImpl::ParseMask()
+{
+  nsCSSValue image, repeat, clip, origin, position, size;
+  image.SetListValue();
+  repeat.SetPairListValue();
+  clip.SetListValue();
+  origin.SetListValue();
+  position.SetListValue();
+  size.SetPairListValue();
+
+  size.GetPairListValue()->mXValue.SetAutoValue();
+  size.GetPairListValue()->mYValue.SetAutoValue();
+
+  AppendValue(eCSSProperty_mask_image,      image);
+  AppendValue(eCSSProperty_mask_repeat,     repeat);
+  AppendValue(eCSSProperty_mask_clip,       clip);
+  AppendValue(eCSSProperty_mask_origin,     origin);
+  AppendValue(eCSSProperty_mask_position,   position);
+  AppendValue(eCSSProperty_mask_size,       size);
+  return true;
 }
 
 bool

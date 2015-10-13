@@ -2366,6 +2366,15 @@ static const nsCSSProperty gBackgroundSubpropTable[] = {
   eCSSProperty_UNKNOWN
 };
 
+static const nsCSSProperty gMaskSubpropTable[] = {
+  eCSSProperty_mask_image,
+  eCSSProperty_mask_repeat,
+  eCSSProperty_mask_position,
+  eCSSProperty_mask_clip,
+  eCSSProperty_mask_origin,
+  eCSSProperty_mask_size,
+  eCSSProperty_UNKNOWN
+};
 static const nsCSSProperty gBorderSubpropTable[] = {
   eCSSProperty_border_top_width,
   eCSSProperty_border_right_width,
@@ -2837,6 +2846,13 @@ enum BackgroundCheckCounter {
   #include "nsCSSPropList.h"
   #undef CSS_PROP_BACKGROUND
   ePropertyCount_for_Background
+};
+
+enum MaskCheckCounter {
+  #define CSS_PROP_MASK ENUM_DATA_FOR_PROPERTY
+  #include "nsCSSPropList.h"
+  #undef CSS_PROP_MASK
+  ePropertyCount_for_Mask
 };
 
 enum PositionCheckCounter {

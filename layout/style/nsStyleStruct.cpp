@@ -1269,14 +1269,6 @@ nsStyleFilter::SetDropShadow(nsCSSShadowArray* aDropShadow)
 // nsStyleSVGReset
 //
 nsStyleSVGReset::nsStyleSVGReset() 
-: mClipCount(0),
-  mOriginCount(0),
-  mRepeatCount(0),
-  mPositionCount(0),
-  mImageCount(0),
-  mSizeCount(0),
-  mModeCount(0),
-  mCompositeCount(0)
 {
     MOZ_COUNT_CTOR(nsStyleSVGReset);
     mStopColor               = NS_RGB(0,0,0);
@@ -1288,10 +1280,6 @@ nsStyleSVGReset::nsStyleSVGReset()
     mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
     mVectorEffect            = NS_STYLE_VECTOR_EFFECT_NONE;
     mMaskType                = NS_STYLE_MASK_TYPE_LUMINANCE;
-
-    /*nsStyleBackground::Layer *onlyLayer = mLayers.AppendElement();
-    NS_ASSERTION(onlyLayer, "auto array must have room for 1 element");
-    onlyLayer->SetInitialValues();*/
 }
 
 nsStyleSVGReset::~nsStyleSVGReset() 
@@ -2165,6 +2153,77 @@ nsStyleImage::operator==(const nsStyleImage& aOther) const
   return true;
 }
 
+// --------------------
+// nsStyleMask
+//
+nsStyleMask::nsStyleMask()
+: mClipCount(0),
+  mOriginCount(0),
+  mRepeatCount(0),
+  mPositionCount(0),
+  mImageCount(0),
+  mSizeCount(0),
+  mModeCount(0),
+  mCompositeCount(0)
+{
+  MOZ_COUNT_CTOR(nsStyleMask);
+}
+
+nsStyleMask::nsStyleMask(const nsStyleMask& aOther)
+{
+  MOZ_COUNT_CTOR(nsStyleMask);
+
+  // TBD: mask layers copy.
+}
+
+nsStyleMask::~nsStyleMask()
+{
+  MOZ_COUNT_DTOR(nsStyleMask);
+}
+
+void
+nsStyleMask::Destroy(nsPresContext* aContext)
+{
+  // Untrack all the images stored in our layers
+  for (uint32_t i = 0; i < mImageCount; ++i)
+    mLayers[i].UntrackImages(aContext);
+
+  this->~nsStyleMask();
+  aContext->PresShell()->
+    FreeByObjectID(nsPresArena::nsStyleMask_id, this);
+}
+
+nsChangeHint nsStyleMask::CalcDifference(const nsStyleMask& aOther) const
+{
+  const nsStyleMask* moreLayers =
+    mImageCount > aOther.mImageCount ? this : &aOther;
+  const nsStyleMask* lessLayers =
+    mImageCount > aOther.mImageCount ? &aOther : this;
+
+
+  NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT(i, moreLayers) {
+    if (i < lessLayers->mImageCount) {
+      if (moreLayers->mLayers[i] != lessLayers->mLayers[i]) {
+        if ((moreLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element) ||
+            (lessLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element))
+          return NS_CombineHint(nsChangeHint_UpdateEffects, NS_STYLE_HINT_VISUAL);
+      }
+    } else {
+      if (moreLayers->mLayers[i].mImage.GetType() == eStyleImageType_Element)
+        return NS_CombineHint(nsChangeHint_UpdateEffects, NS_STYLE_HINT_VISUAL);
+    }
+  }
+
+  if (mClipCount != aOther.mClipCount ||
+      mOriginCount != aOther.mOriginCount ||
+      mRepeatCount != aOther.mRepeatCount ||
+      mPositionCount != aOther.mPositionCount ||
+      mSizeCount != aOther.mSizeCount) {
+    return nsChangeHint_NeutralChange;
+  }
+
+  return NS_STYLE_HINT_NONE;
+}
 // --------------------
 // nsStyleBackground
 //

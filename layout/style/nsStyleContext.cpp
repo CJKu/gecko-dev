@@ -931,6 +931,7 @@ nsStyleContext::CalcStyleDifference(nsStyleContext* aOther,
   DO_STRUCT_DIFFERENCE(TextReset);
   DO_STRUCT_DIFFERENCE(Background);
   DO_STRUCT_DIFFERENCE(Color);
+  DO_STRUCT_DIFFERENCE(Mask);
 
 #undef DO_STRUCT_DIFFERENCE
 
