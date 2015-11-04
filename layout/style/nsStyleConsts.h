@@ -262,51 +262,57 @@ static inline mozilla::css::Side operator++(mozilla::css::Side& side, int) {
 #define NS_STYLE_ANIMATION_PLAY_STATE_RUNNING     0
 #define NS_STYLE_ANIMATION_PLAY_STATE_PAUSED      1
 
-// See nsStyleBackground
-#define NS_STYLE_BG_ATTACHMENT_SCROLL     0
-#define NS_STYLE_BG_ATTACHMENT_FIXED      1
-#define NS_STYLE_BG_ATTACHMENT_LOCAL      2
+// See nsStyleLayers
+#define NS_STYLE_LAYER_ATTACHMENT_SCROLL        0
+#define NS_STYLE_LAYER_ATTACHMENT_FIXED         1
+#define NS_STYLE_LAYER_ATTACHMENT_LOCAL         2
 
-// See nsStyleBackground
+// See nsStyleLayers
 // Code depends on these constants having the same values as BG_ORIGIN_*
-#define NS_STYLE_BG_CLIP_BORDER           0
-#define NS_STYLE_BG_CLIP_PADDING          1
-#define NS_STYLE_BG_CLIP_CONTENT          2
+#define NS_STYLE_LAYER_CLIP_BORDER              0
+#define NS_STYLE_LAYER_CLIP_PADDING             1
+#define NS_STYLE_LAYER_CLIP_CONTENT             2
+
 // A magic value that we use for our "pretend that background-clip is
 // 'padding' when we have a solid border" optimization.  This isn't
-// actually equal to NS_STYLE_BG_CLIP_PADDING because using that
+// actually equal to NS_STYLE_LAYER_CLIP_PADDING because using that
 // causes antialiasing seams between the background and border.  This
 // is a backend-only value.
-#define NS_STYLE_BG_CLIP_MOZ_ALMOST_PADDING 127
+#define NS_STYLE_LAYER_CLIP_MOZ_ALMOST_PADDING  127
+
+// See nsStyleLayers
+// Code depends on these constants having the same values as BG_CLIP_*
+#define NS_STYLE_LAYER_ORIGIN_BORDER            0
+#define NS_STYLE_LAYER_ORIGIN_PADDING           1
+#define NS_STYLE_LAYER_ORIGIN_CONTENT           2
+
+// See nsStyleLayers
+// The parser code depends on |ing these values together.
+#define NS_STYLE_LAYER_POSITION_CENTER          (1<<0)
+#define NS_STYLE_LAYER_POSITION_TOP             (1<<1)
+#define NS_STYLE_LAYER_POSITION_BOTTOM          (1<<2)
+#define NS_STYLE_LAYER_POSITION_LEFT            (1<<3)
+#define NS_STYLE_LAYER_POSITION_RIGHT           (1<<4)
+
+// See nsStyleLayers
+#define NS_STYLE_LAYER_REPEAT_NO_REPEAT         0x00
+#define NS_STYLE_LAYER_REPEAT_REPEAT_X          0x01
+#define NS_STYLE_LAYER_REPEAT_REPEAT_Y          0x02
+#define NS_STYLE_LAYER_REPEAT_REPEAT            0x03
+
+// See nsStyleLayers
+#define NS_STYLE_LAYER_SIZE_CONTAIN             0
+#define NS_STYLE_LAYER_SIZE_COVER               1
+
+// See nsStyleLayers
+#define NS_STYLE_LAYER_MODE_ALPHA               0
+#define NS_STYLE_LAYER_MODE_LUMINANCE           1
+#define NS_STYLE_LAYER_MODE_AUTO                2
 
 // See nsStyleBackground
 #define NS_STYLE_BG_INLINE_POLICY_EACH_BOX      0
 #define NS_STYLE_BG_INLINE_POLICY_CONTINUOUS    1
 #define NS_STYLE_BG_INLINE_POLICY_BOUNDING_BOX  2
-
-// See nsStyleBackground
-// Code depends on these constants having the same values as BG_CLIP_*
-#define NS_STYLE_BG_ORIGIN_BORDER         0
-#define NS_STYLE_BG_ORIGIN_PADDING        1
-#define NS_STYLE_BG_ORIGIN_CONTENT        2
-
-// See nsStyleBackground
-// The parser code depends on |ing these values together.
-#define NS_STYLE_BG_POSITION_CENTER  (1<<0)
-#define NS_STYLE_BG_POSITION_TOP     (1<<1)
-#define NS_STYLE_BG_POSITION_BOTTOM  (1<<2)
-#define NS_STYLE_BG_POSITION_LEFT    (1<<3)
-#define NS_STYLE_BG_POSITION_RIGHT   (1<<4)
-
-// See nsStyleBackground
-#define NS_STYLE_BG_REPEAT_NO_REPEAT                0x00
-#define NS_STYLE_BG_REPEAT_REPEAT_X                 0x01
-#define NS_STYLE_BG_REPEAT_REPEAT_Y                 0x02
-#define NS_STYLE_BG_REPEAT_REPEAT                   0x03
-
-// See nsStyleBackground
-#define NS_STYLE_BG_SIZE_CONTAIN  0
-#define NS_STYLE_BG_SIZE_COVER    1
 
 // See nsStyleTable
 #define NS_STYLE_BORDER_COLLAPSE                0
@@ -981,8 +987,6 @@ static inline mozilla::css::Side operator++(mozilla::css::Side& side, int) {
 #define NS_STYLE_GRADIENT_SIZE_FARTHEST_CORNER  3
 #define NS_STYLE_GRADIENT_SIZE_EXPLICIT_SIZE    4
 
-// See nsStyleSVG
-
 // dominant-baseline
 #define NS_STYLE_DOMINANT_BASELINE_AUTO              0
 #define NS_STYLE_DOMINANT_BASELINE_USE_SCRIPT        1
@@ -1088,6 +1092,12 @@ static inline mozilla::css::Side operator++(mozilla::css::Side& side, int) {
 #define NS_STYLE_BLEND_SATURATION                   13
 #define NS_STYLE_BLEND_COLOR                        14
 #define NS_STYLE_BLEND_LUMINOSITY                   15
+
+// composite
+#define NS_STYLE_COMPOSITE_ADD                      0
+#define NS_STYLE_COMPOSITE_SUBTRACT                 1
+#define NS_STYLE_COMPOSITE_INTERSECT                2
+#define NS_STYLE_COMPOSITE_EXCLUDE                  3
 
 // See nsStyleText::mControlCharacterVisibility
 #define NS_STYLE_CONTROL_CHARACTER_VISIBILITY_HIDDEN  0
