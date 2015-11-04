@@ -109,7 +109,7 @@ nsConditionalResetStyleData::GetConditionalStyleData(nsStyleStructID aSID,
 static void
   ComputePositionValue(nsStyleContext* aStyleContext,
                        const nsCSSValue& aValue,
-                       nsStyleBackground::Position& aComputedValue,
+                       nsStyleLayers::Position& aComputedValue,
                        RuleNodeCacheConditions& aConditions);
 
 /*
@@ -738,16 +738,16 @@ static float
 GetFloatFromBoxPosition(int32_t aEnumValue)
 {
   switch (aEnumValue) {
-  case NS_STYLE_BG_POSITION_LEFT:
-  case NS_STYLE_BG_POSITION_TOP:
+  case NS_STYLE_LAYER_POSITION_LEFT:
+  case NS_STYLE_LAYER_POSITION_TOP:
     return 0.0f;
-  case NS_STYLE_BG_POSITION_RIGHT:
-  case NS_STYLE_BG_POSITION_BOTTOM:
+  case NS_STYLE_LAYER_POSITION_RIGHT:
+  case NS_STYLE_LAYER_POSITION_BOTTOM:
     return 1.0f;
   default:
     NS_NOTREACHED("unexpected value");
     // fall through
-  case NS_STYLE_BG_POSITION_CENTER:
+  case NS_STYLE_LAYER_POSITION_CENTER:
     return 0.5f;
   }
 }
@@ -1901,6 +1901,12 @@ static const uint32_t gBackgroundFlags[] = {
 #define CSS_PROP_BACKGROUND FLAG_DATA_FOR_PROPERTY
 #include "nsCSSPropList.h"
 #undef CSS_PROP_BACKGROUND
+};
+
+static const uint32_t gMaskFlags[] = {
+#define CSS_PROP_MASK FLAG_DATA_FOR_PROPERTY
+#include "nsCSSPropList.h"
+#undef CSS_PROP_MASK
 };
 
 static const uint32_t gPositionFlags[] = {
@@ -5460,7 +5466,7 @@ nsRuleNode::ComputeDisplayData(void* aStartStruct,
   }
 
   // scroll-snap-coordinate: none, inherit, initial
-  typedef nsStyleBackground::Position Position;
+  typedef nsStyleLayers::Position Position;
 
   const nsCSSValue& snapCoordinate = *aRuleData->ValueForScrollSnapCoordinate();
   switch (snapCoordinate.GetUnit()) {
@@ -6149,11 +6155,11 @@ struct BackgroundItemComputer<nsCSSValueList, uint8_t>
 };
 
 template <>
-struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Repeat>
+struct BackgroundItemComputer<nsCSSValuePairList, nsStyleLayers::Repeat>
 {
   static void ComputeValue(nsStyleContext* aStyleContext,
                            const nsCSSValuePairList* aSpecifiedValue,
-                           nsStyleBackground::Repeat& aComputedValue,
+                           nsStyleLayers::Repeat& aComputedValue,
                            RuleNodeCacheConditions& aConditions)
   {
     NS_ASSERTION(aSpecifiedValue->mXValue.GetUnit() == eCSSUnit_Enumerated &&
@@ -6164,13 +6170,13 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Repeat>
     bool hasContraction = true;
     uint8_t value = aSpecifiedValue->mXValue.GetIntValue();
     switch (value) {
-    case NS_STYLE_BG_REPEAT_REPEAT_X:
-      aComputedValue.mXRepeat = NS_STYLE_BG_REPEAT_REPEAT;
-      aComputedValue.mYRepeat = NS_STYLE_BG_REPEAT_NO_REPEAT;
+    case NS_STYLE_LAYER_REPEAT_REPEAT_X:
+      aComputedValue.mXRepeat = NS_STYLE_LAYER_REPEAT_REPEAT;
+      aComputedValue.mYRepeat = NS_STYLE_LAYER_REPEAT_NO_REPEAT;
       break;
-    case NS_STYLE_BG_REPEAT_REPEAT_Y:
-      aComputedValue.mXRepeat = NS_STYLE_BG_REPEAT_NO_REPEAT;
-      aComputedValue.mYRepeat = NS_STYLE_BG_REPEAT_REPEAT;
+    case NS_STYLE_LAYER_REPEAT_REPEAT_Y:
+      aComputedValue.mXRepeat = NS_STYLE_LAYER_REPEAT_NO_REPEAT;
+      aComputedValue.mYRepeat = NS_STYLE_LAYER_REPEAT_REPEAT;
       break;
     default:
       aComputedValue.mXRepeat = value;
@@ -6190,8 +6196,8 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Repeat>
       break;
     case eCSSUnit_Enumerated:
       value = aSpecifiedValue->mYValue.GetIntValue();
-      NS_ASSERTION(value == NS_STYLE_BG_REPEAT_NO_REPEAT ||
-                   value == NS_STYLE_BG_REPEAT_REPEAT, "Unexpected value");
+      NS_ASSERTION(value == NS_STYLE_LAYER_REPEAT_NO_REPEAT ||
+                   value == NS_STYLE_LAYER_REPEAT_REPEAT, "Unexpected value");
       aComputedValue.mYRepeat = value;
       break;
     default:
@@ -6218,7 +6224,7 @@ struct BackgroundItemComputer<nsCSSValueList, nsStyleImage>
  * This function computes a single PositionCoord from two nsCSSValue objects,
  * which represent an edge and an offset from that edge.
  */
-typedef nsStyleBackground::Position::PositionCoord PositionCoord;
+typedef nsStyleLayers::Position::PositionCoord PositionCoord;
 static void
 ComputePositionCoord(nsStyleContext* aStyleContext,
                      const nsCSSValue& aEdge,
@@ -6253,8 +6259,8 @@ ComputePositionCoord(nsStyleContext* aStyleContext,
 
   if (eCSSUnit_Enumerated == aEdge.GetUnit()) {
     int sign;
-    if (aEdge.GetIntValue() & (NS_STYLE_BG_POSITION_BOTTOM |
-                               NS_STYLE_BG_POSITION_RIGHT)) {
+    if (aEdge.GetIntValue() & (NS_STYLE_LAYER_POSITION_BOTTOM |
+                               NS_STYLE_LAYER_POSITION_RIGHT)) {
       sign = -1;
     } else {
       sign = 1;
@@ -6273,7 +6279,7 @@ ComputePositionCoord(nsStyleContext* aStyleContext,
 static void
 ComputePositionValue(nsStyleContext* aStyleContext,
                      const nsCSSValue& aValue,
-                     nsStyleBackground::Position& aComputedValue,
+                     nsStyleLayers::Position& aComputedValue,
                      RuleNodeCacheConditions& aConditions)
 {
   NS_ASSERTION(aValue.GetUnit() == eCSSUnit_Array,
@@ -6303,11 +6309,11 @@ ComputePositionValue(nsStyleContext* aStyleContext,
 }
 
 template <>
-struct BackgroundItemComputer<nsCSSValueList, nsStyleBackground::Position>
+struct BackgroundItemComputer<nsCSSValueList, nsStyleLayers::Position>
 {
   static void ComputeValue(nsStyleContext* aStyleContext,
                            const nsCSSValueList* aSpecifiedValue,
-                           nsStyleBackground::Position& aComputedValue,
+                           nsStyleLayers::Position& aComputedValue,
                            RuleNodeCacheConditions& aConditions)
   {
     ComputePositionValue(aStyleContext, aSpecifiedValue->mValue,
@@ -6318,43 +6324,43 @@ struct BackgroundItemComputer<nsCSSValueList, nsStyleBackground::Position>
 
 struct BackgroundSizeAxis {
   nsCSSValue nsCSSValuePairList::* specified;
-  nsStyleBackground::Size::Dimension nsStyleBackground::Size::* result;
-  uint8_t nsStyleBackground::Size::* type;
+  nsStyleLayers::Size::Dimension nsStyleLayers::Size::* result;
+  uint8_t nsStyleLayers::Size::* type;
 };
 
 static const BackgroundSizeAxis gBGSizeAxes[] = {
   { &nsCSSValuePairList::mXValue,
-    &nsStyleBackground::Size::mWidth,
-    &nsStyleBackground::Size::mWidthType },
+    &nsStyleLayers::Size::mWidth,
+    &nsStyleLayers::Size::mWidthType },
   { &nsCSSValuePairList::mYValue,
-    &nsStyleBackground::Size::mHeight,
-    &nsStyleBackground::Size::mHeightType }
+    &nsStyleLayers::Size::mHeight,
+    &nsStyleLayers::Size::mHeightType }
 };
 
 template <>
-struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Size>
+struct BackgroundItemComputer<nsCSSValuePairList, nsStyleLayers::Size>
 {
   static void ComputeValue(nsStyleContext* aStyleContext,
                            const nsCSSValuePairList* aSpecifiedValue,
-                           nsStyleBackground::Size& aComputedValue,
+                           nsStyleLayers::Size& aComputedValue,
                            RuleNodeCacheConditions& aConditions)
   {
-    nsStyleBackground::Size &size = aComputedValue;
+    nsStyleLayers::Size &size = aComputedValue;
     for (const BackgroundSizeAxis *axis = gBGSizeAxes,
                         *axis_end = ArrayEnd(gBGSizeAxes);
          axis < axis_end; ++axis) {
       const nsCSSValue &specified = aSpecifiedValue->*(axis->specified);
       if (eCSSUnit_Auto == specified.GetUnit()) {
-        size.*(axis->type) = nsStyleBackground::Size::eAuto;
+        size.*(axis->type) = nsStyleLayers::Size::eAuto;
       }
       else if (eCSSUnit_Enumerated == specified.GetUnit()) {
-        static_assert(nsStyleBackground::Size::eContain ==
-                      NS_STYLE_BG_SIZE_CONTAIN &&
-                      nsStyleBackground::Size::eCover ==
-                      NS_STYLE_BG_SIZE_COVER,
+        static_assert(nsStyleLayers::Size::eContain ==
+                      NS_STYLE_LAYER_SIZE_CONTAIN &&
+                      nsStyleLayers::Size::eCover ==
+                      NS_STYLE_LAYER_SIZE_COVER,
                       "background size constants out of sync");
-        MOZ_ASSERT(specified.GetIntValue() == NS_STYLE_BG_SIZE_CONTAIN ||
-                   specified.GetIntValue() == NS_STYLE_BG_SIZE_COVER,
+        MOZ_ASSERT(specified.GetIntValue() == NS_STYLE_LAYER_SIZE_CONTAIN ||
+                   specified.GetIntValue() == NS_STYLE_LAYER_SIZE_COVER,
                    "invalid enumerated value for size coordinate");
         size.*(axis->type) = specified.GetIntValue();
       }
@@ -6370,8 +6376,8 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Size>
                      widthValue.GetUnit() != eCSSUnit_Unset,
                      "initial/inherit/unset should already have been handled");
           MOZ_ASSERT(widthValue.GetUnit() == eCSSUnit_Enumerated &&
-                     (widthValue.GetIntValue() == NS_STYLE_BG_SIZE_CONTAIN ||
-                      widthValue.GetIntValue() == NS_STYLE_BG_SIZE_COVER),
+                     (widthValue.GetIntValue() == NS_STYLE_LAYER_SIZE_CONTAIN ||
+                      widthValue.GetIntValue() == NS_STYLE_LAYER_SIZE_COVER),
                      "null height value not corresponding to allowable "
                      "non-null width value");
         }
@@ -6382,7 +6388,7 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Size>
         (size.*(axis->result)).mLength = 0;
         (size.*(axis->result)).mPercent = specified.GetPercentValue();
         (size.*(axis->result)).mHasPercent = true;
-        size.*(axis->type) = nsStyleBackground::Size::eLengthPercentage;
+        size.*(axis->type) = nsStyleLayers::Size::eLengthPercentage;
       }
       else if (specified.IsLengthUnit()) {
         (size.*(axis->result)).mLength =
@@ -6390,7 +6396,7 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Size>
                      aConditions);
         (size.*(axis->result)).mPercent = 0.0f;
         (size.*(axis->result)).mHasPercent = false;
-        size.*(axis->type) = nsStyleBackground::Size::eLengthPercentage;
+        size.*(axis->type) = nsStyleLayers::Size::eLengthPercentage;
       } else {
         MOZ_ASSERT(specified.IsCalcUnit(), "unexpected unit");
         LengthPercentPairCalcOps ops(aStyleContext,
@@ -6400,16 +6406,16 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Size>
         (size.*(axis->result)).mLength = vals.mLength;
         (size.*(axis->result)).mPercent = vals.mPercent;
         (size.*(axis->result)).mHasPercent = ops.mHasPercent;
-        size.*(axis->type) = nsStyleBackground::Size::eLengthPercentage;
+        size.*(axis->type) = nsStyleLayers::Size::eLengthPercentage;
       }
     }
 
-    MOZ_ASSERT(size.mWidthType < nsStyleBackground::Size::eDimensionType_COUNT,
+    MOZ_ASSERT(size.mWidthType < nsStyleLayers::Size::eDimensionType_COUNT,
                "bad width type");
-    MOZ_ASSERT(size.mHeightType < nsStyleBackground::Size::eDimensionType_COUNT,
+    MOZ_ASSERT(size.mHeightType < nsStyleLayers::Size::eDimensionType_COUNT,
                "bad height type");
-    MOZ_ASSERT((size.mWidthType != nsStyleBackground::Size::eContain &&
-                size.mWidthType != nsStyleBackground::Size::eCover) ||
+    MOZ_ASSERT((size.mWidthType != nsStyleLayers::Size::eContain &&
+                size.mWidthType != nsStyleLayers::Size::eCover) ||
                size.mWidthType == size.mHeightType,
                "contain/cover apply to both dimensions or to neither");
   }
@@ -6417,11 +6423,11 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleBackground::Size>
 
 template <class ComputedValueItem>
 static void
-SetBackgroundList(nsStyleContext* aStyleContext,
+SetLayerList(nsStyleContext* aStyleContext,
                   const nsCSSValue& aValue,
-                  nsAutoTArray< nsStyleBackground::Layer, 1> &aLayers,
-                  const nsAutoTArray<nsStyleBackground::Layer, 1> &aParentLayers,
-                  ComputedValueItem nsStyleBackground::Layer::* aResultLocation,
+                  nsAutoTArray< nsStyleLayers::Layer, 1> &aLayers,
+                  const nsAutoTArray<nsStyleLayers::Layer, 1> &aParentLayers,
+                  ComputedValueItem nsStyleLayers::Layer::* aResultLocation,
                   ComputedValueItem aInitialValue,
                   uint32_t aParentItemCount,
                   uint32_t& aItemCount,
@@ -6482,12 +6488,12 @@ SetBackgroundList(nsStyleContext* aStyleContext,
 
 template <class ComputedValueItem>
 static void
-SetBackgroundPairList(nsStyleContext* aStyleContext,
+SetLayerPairList(nsStyleContext* aStyleContext,
                       const nsCSSValue& aValue,
-                      nsAutoTArray< nsStyleBackground::Layer, 1> &aLayers,
-                      const nsAutoTArray<nsStyleBackground::Layer, 1>
+                      nsAutoTArray< nsStyleLayers::Layer, 1> &aLayers,
+                      const nsAutoTArray<nsStyleLayers::Layer, 1>
                                                                  &aParentLayers,
-                      ComputedValueItem nsStyleBackground::Layer::*
+                      ComputedValueItem nsStyleLayers::Layer::*
                                                                 aResultLocation,
                       ComputedValueItem aInitialValue,
                       uint32_t aParentItemCount,
@@ -6551,8 +6557,8 @@ SetBackgroundPairList(nsStyleContext* aStyleContext,
 
 template <class ComputedValueItem>
 static void
-FillBackgroundList(nsAutoTArray< nsStyleBackground::Layer, 1> &aLayers,
-    ComputedValueItem nsStyleBackground::Layer::* aResultLocation,
+FillBackgroundList(nsAutoTArray< nsStyleLayers::Layer, 1> &aLayers,
+    ComputedValueItem nsStyleLayers::Layer::* aResultLocation,
     uint32_t aItemCount, uint32_t aFillCount)
 {
   NS_PRECONDITION(aFillCount <= aLayers.Length(), "unexpected array length");
@@ -6591,100 +6597,100 @@ nsRuleNode::ComputeBackgroundData(void* aStartStruct,
 
   // background-image: url (stored as image), none, inherit [list]
   nsStyleImage initialImage;
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundImage(),
-                    bg->mLayers,
-                    parentBG->mLayers, &nsStyleBackground::Layer::mImage,
-                    initialImage, parentBG->mImageCount, bg->mImageCount,
+  SetLayerList(aContext, *aRuleData->ValueForBackgroundImage(),
+                    bg->Layers(),
+                    parentBG->Layers(), &nsStyleLayers::Layer::mImage,
+                    initialImage, parentBG->mLayers.mImageCount, bg->mLayers.mImageCount,
                     maxItemCount, rebuild, conditions);
 
   // background-repeat: enum, inherit, initial [pair list]
-  nsStyleBackground::Repeat initialRepeat;
+  nsStyleLayers::Repeat initialRepeat;
   initialRepeat.SetInitialValues();
-  SetBackgroundPairList(aContext, *aRuleData->ValueForBackgroundRepeat(),
-                        bg->mLayers,
-                        parentBG->mLayers, &nsStyleBackground::Layer::mRepeat,
-                        initialRepeat, parentBG->mRepeatCount,
-                        bg->mRepeatCount, maxItemCount, rebuild, 
+  SetLayerPairList(aContext, *aRuleData->ValueForBackgroundRepeat(),
+                        bg->Layers(),
+                        parentBG->Layers(), &nsStyleLayers::Layer::mRepeat,
+                        initialRepeat, parentBG->mLayers.mRepeatCount,
+                        bg->mLayers.mRepeatCount, maxItemCount, rebuild,
                         conditions);
 
   // background-attachment: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundAttachment(),
-                    bg->mLayers, parentBG->mLayers,
-                    &nsStyleBackground::Layer::mAttachment,
-                    uint8_t(NS_STYLE_BG_ATTACHMENT_SCROLL),
-                    parentBG->mAttachmentCount,
-                    bg->mAttachmentCount, maxItemCount, rebuild,
+  SetLayerList(aContext, *aRuleData->ValueForBackgroundAttachment(),
+                    bg->Layers(), parentBG->Layers(),
+                    &nsStyleLayers::Layer::mAttachment,
+                    uint8_t(NS_STYLE_LAYER_ATTACHMENT_SCROLL),
+                    parentBG->mLayers.mAttachmentCount,
+                    bg->mLayers.mAttachmentCount, maxItemCount, rebuild,
                     conditions);
 
   // background-clip: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundClip(),
-                    bg->mLayers,
-                    parentBG->mLayers, &nsStyleBackground::Layer::mClip,
-                    uint8_t(NS_STYLE_BG_CLIP_BORDER), parentBG->mClipCount,
-                    bg->mClipCount, maxItemCount, rebuild, conditions);
+  SetLayerList(aContext, *aRuleData->ValueForBackgroundClip(),
+                    bg->Layers(),
+                    parentBG->Layers(), &nsStyleLayers::Layer::mClip,
+                    uint8_t(NS_STYLE_LAYER_CLIP_BORDER), parentBG->mLayers.mClipCount,
+                    bg->mLayers.mClipCount, maxItemCount, rebuild, conditions);
 
   // background-blend-mode: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundBlendMode(),
-                    bg->mLayers,
-                    parentBG->mLayers, &nsStyleBackground::Layer::mBlendMode,
-                    uint8_t(NS_STYLE_BLEND_NORMAL), parentBG->mBlendModeCount,
-                    bg->mBlendModeCount, maxItemCount, rebuild,
+  SetLayerList(aContext, *aRuleData->ValueForBackgroundBlendMode(),
+                    bg->Layers(),
+                    parentBG->Layers(), &nsStyleLayers::Layer::mBlendMode,
+                    uint8_t(NS_STYLE_BLEND_NORMAL), parentBG->mLayers.mBlendModeCount,
+                    bg->mLayers.mBlendModeCount, maxItemCount, rebuild,
                     conditions);
 
   // background-origin: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundOrigin(),
-                    bg->mLayers,
-                    parentBG->mLayers, &nsStyleBackground::Layer::mOrigin,
-                    uint8_t(NS_STYLE_BG_ORIGIN_PADDING), parentBG->mOriginCount,
-                    bg->mOriginCount, maxItemCount, rebuild,
+  SetLayerList(aContext, *aRuleData->ValueForBackgroundOrigin(),
+                    bg->Layers(),
+                    parentBG->Layers(), &nsStyleLayers::Layer::mOrigin,
+                    uint8_t(NS_STYLE_LAYER_ORIGIN_PADDING), parentBG->mLayers.mOriginCount,
+                    bg->mLayers.mOriginCount, maxItemCount, rebuild,
                     conditions);
 
   // background-position: enum, length, percent (flags), inherit [pair list]
-  nsStyleBackground::Position initialPosition;
+  nsStyleLayers::Position initialPosition;
   initialPosition.SetInitialPercentValues(0.0f);
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundPosition(),
-                    bg->mLayers,
-                    parentBG->mLayers, &nsStyleBackground::Layer::mPosition,
-                    initialPosition, parentBG->mPositionCount,
-                    bg->mPositionCount, maxItemCount, rebuild,
+  SetLayerList(aContext, *aRuleData->ValueForBackgroundPosition(),
+                    bg->Layers(),
+                    parentBG->Layers(), &nsStyleLayers::Layer::mPosition,
+                    initialPosition, parentBG->mLayers.mPositionCount,
+                    bg->mLayers.mPositionCount, maxItemCount, rebuild,
                     conditions);
 
   // background-size: enum, length, auto, inherit, initial [pair list]
-  nsStyleBackground::Size initialSize;
+  nsStyleLayers::Size initialSize;
   initialSize.SetInitialValues();
-  SetBackgroundPairList(aContext, *aRuleData->ValueForBackgroundSize(),
-                        bg->mLayers,
-                        parentBG->mLayers, &nsStyleBackground::Layer::mSize,
-                        initialSize, parentBG->mSizeCount,
-                        bg->mSizeCount, maxItemCount, rebuild,
+  SetLayerPairList(aContext, *aRuleData->ValueForBackgroundSize(),
+                        bg->Layers(),
+                        parentBG->Layers(), &nsStyleLayers::Layer::mSize,
+                        initialSize, parentBG->mLayers.mSizeCount,
+                        bg->mLayers.mSizeCount, maxItemCount, rebuild,
                         conditions);
 
   if (rebuild) {
     // Delete any extra items.  We need to keep layers in which any
     // property was specified.
-    bg->mLayers.TruncateLength(maxItemCount);
+    bg->Layers().TruncateLength(maxItemCount);
 
-    uint32_t fillCount = bg->mImageCount;
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mImage,
-                       bg->mImageCount, fillCount);
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mRepeat,
-                       bg->mRepeatCount, fillCount);
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mAttachment,
-                       bg->mAttachmentCount, fillCount);
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mClip,
-                       bg->mClipCount, fillCount);
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mBlendMode,
-                       bg->mBlendModeCount, fillCount);
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mOrigin,
-                       bg->mOriginCount, fillCount);
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mPosition,
-                       bg->mPositionCount, fillCount);
-    FillBackgroundList(bg->mLayers, &nsStyleBackground::Layer::mSize,
-                       bg->mSizeCount, fillCount);
+    uint32_t fillCount = bg->mLayers.mImageCount;
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mImage,
+                       bg->mLayers.mImageCount, fillCount);
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mRepeat,
+                       bg->mLayers.mRepeatCount, fillCount);
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mAttachment,
+                       bg->mLayers.mAttachmentCount, fillCount);
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mClip,
+                       bg->mLayers.mClipCount, fillCount);
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mBlendMode,
+                       bg->mLayers.mBlendModeCount, fillCount);
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mOrigin,
+                       bg->mLayers.mOriginCount, fillCount);
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mPosition,
+                       bg->mLayers.mPositionCount, fillCount);
+    FillBackgroundList(bg->Layers(), &nsStyleLayers::Layer::mSize,
+                       bg->mLayers.mSizeCount, fillCount);
   }
 
   // Now that the dust has settled, register the images with the document
-  for (uint32_t i = 0; i < bg->mImageCount; ++i)
+  for (uint32_t i = 0; i < bg->mLayers.mImageCount; ++i)
     bg->mLayers[i].TrackImages(aContext->PresContext());
 
   COMPUTE_END_RESET(Background, bg)
@@ -9415,16 +9421,21 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
   }
 
   // mask: url, none, inherit
-  const nsCSSValue* maskValue = aRuleData->ValueForMask();
-  if (eCSSUnit_URL == maskValue->GetUnit()) {
-    svgReset->mMask = maskValue->GetURLValue();
-  } else if (eCSSUnit_None == maskValue->GetUnit() ||
-             eCSSUnit_Initial == maskValue->GetUnit() ||
-             eCSSUnit_Unset == maskValue->GetUnit()) {
-    svgReset->mMask = nullptr;
-  } else if (eCSSUnit_Inherit == maskValue->GetUnit()) {
-    conditions.SetUncacheable();
-    svgReset->mMask = parentSVGReset->mMask;
+  const nsCSSValue* maskValue = aRuleData->ValueForMaskImage();
+  if (eCSSUnit_List == maskValue->GetUnit() ||
+      eCSSUnit_ListDep == maskValue->GetUnit()) {
+    const nsCSSValue& item = maskValue->GetListValue()->mValue;
+    if (eCSSUnit_URL == item.GetUnit() ||
+        eCSSUnit_Image == item.GetUnit()) {
+      svgReset->mMask = item.GetURLValue();
+    } else if (eCSSUnit_None == item.GetUnit() ||
+               eCSSUnit_Initial == item.GetUnit() ||
+               eCSSUnit_Unset == item.GetUnit()) {
+      svgReset->mMask = nullptr;
+    } else if (eCSSUnit_Inherit == item.GetUnit()) {
+      conditions.SetUncacheable();
+      svgReset->mMask = parentSVGReset->mMask;
+    }
   }
 
   // mask-type: enum, inherit, initial
@@ -9434,6 +9445,103 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
               SETDSC_ENUMERATED | SETDSC_UNSET_INITIAL,
               parentSVGReset->mMaskType,
               NS_STYLE_MASK_TYPE_LUMINANCE, 0, 0, 0, 0);
+
+  // mask-image: none | <url> | <image-list> | <element-reference>  | <gradient>
+  uint32_t maxItemCount = 1;
+  bool rebuild = false;
+  nsStyleImage initialImage;
+  SetLayerList(aContext, *aRuleData->ValueForMaskImage(),
+                    svgReset->Layers(),
+                    parentSVGReset->Layers(), &nsStyleLayers::Layer::mImage,
+                    initialImage, parentSVGReset->mLayers.mImageCount, svgReset->mLayers.mImageCount,
+                    maxItemCount, rebuild, conditions);
+
+  // mask-repeat: enum, inherit, initial [pair list]
+  nsStyleLayers::Repeat initialRepeat;
+  initialRepeat.SetInitialValues();
+  SetLayerPairList(aContext, *aRuleData->ValueForMaskRepeat(),
+                        svgReset->Layers(),
+                        parentSVGReset->Layers(), &nsStyleLayers::Layer::mRepeat,
+                        initialRepeat, parentSVGReset->mLayers.mRepeatCount,
+                        svgReset->mLayers.mRepeatCount, maxItemCount, rebuild,
+                        conditions);
+
+  // mask-clip: enum, inherit, initial [list]
+  SetLayerList(aContext, *aRuleData->ValueForMaskClip(),
+                    svgReset->Layers(),
+                    parentSVGReset->Layers(), &nsStyleLayers::Layer::mClip,
+                    uint8_t(NS_STYLE_LAYER_CLIP_BORDER), parentSVGReset->mLayers.mClipCount,
+                    svgReset->mLayers.mClipCount, maxItemCount, rebuild, conditions);
+
+  // mask-origin: enum, inherit, initial [list]
+  SetLayerList(aContext, *aRuleData->ValueForMaskOrigin(),
+                    svgReset->Layers(),
+                    parentSVGReset->Layers(), &nsStyleLayers::Layer::mOrigin,
+                    uint8_t(NS_STYLE_LAYER_ORIGIN_PADDING), parentSVGReset->mLayers.mOriginCount,
+                    svgReset->mLayers.mOriginCount, maxItemCount, rebuild,
+                    conditions);
+
+  // mask-position: enum, length, percent (flags), inherit [pair list]
+  nsStyleLayers::Position initialPosition;
+  initialPosition.SetInitialPercentValues(0.0f);
+  SetLayerList(aContext, *aRuleData->ValueForMaskPosition(),
+                    svgReset->Layers(),
+                    parentSVGReset->Layers(), &nsStyleLayers::Layer::mPosition,
+                    initialPosition, parentSVGReset->mLayers.mPositionCount,
+                    svgReset->mLayers.mPositionCount, maxItemCount, rebuild,
+                    conditions);
+
+  // mask-size: enum, length, auto, inherit, initial [pair list]
+  nsStyleLayers::Size initialSize;
+  initialSize.SetInitialValues();
+  SetLayerPairList(aContext, *aRuleData->ValueForMaskSize(),
+                        svgReset->Layers(),
+                        parentSVGReset->Layers(), &nsStyleLayers::Layer::mSize,
+                        initialSize, parentSVGReset->mLayers.mSizeCount,
+                        svgReset->mLayers.mSizeCount, maxItemCount, rebuild,
+                        conditions);
+
+  // mask-mode: alpha | luminance | auto
+  SetLayerList(aContext, *aRuleData->ValueForMaskMode(),
+                    svgReset->Layers(),
+                    parentSVGReset->Layers(), &nsStyleLayers::Layer::mMaskMode,
+                    uint8_t(NS_STYLE_LAYER_MODE_AUTO), parentSVGReset->mLayers.mMaskModeCount,
+                    svgReset->mLayers.mMaskModeCount, maxItemCount, rebuild, conditions);
+
+  // mask-composition: add | subtract | intersect | exclude
+  SetLayerList(aContext, *aRuleData->ValueForMaskComposite(),
+                    svgReset->Layers(),
+                    parentSVGReset->Layers(), &nsStyleLayers::Layer::mComposite,
+                    uint8_t(NS_STYLE_COMPOSITE_ADD), parentSVGReset->mLayers.mCompositeCount,
+                    svgReset->mLayers.mCompositeCount, maxItemCount, rebuild, conditions);
+
+  if (rebuild) {
+    // Delete any extra items.  We need to keep layers in which any
+    // property was specified.
+    svgReset->Layers().TruncateLength(maxItemCount);
+
+    uint32_t fillCount = svgReset->mLayers.mImageCount;
+
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mImage,
+                       svgReset->mLayers.mImageCount, fillCount);
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mRepeat,
+                       svgReset->mLayers.mRepeatCount, fillCount);
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mClip,
+                       svgReset->mLayers.mClipCount, fillCount);
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mOrigin,
+                       svgReset->mLayers.mOriginCount, fillCount);
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mPosition,
+                       svgReset->mLayers.mPositionCount, fillCount);
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mSize,
+                       svgReset->mLayers.mSizeCount, fillCount);
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mMaskMode,
+                       svgReset->mLayers.mMaskModeCount, fillCount);
+    FillBackgroundList(svgReset->Layers(), &nsStyleLayers::Layer::mComposite,
+                       svgReset->mLayers.mCompositeCount, fillCount);
+  }
+
+  for (uint32_t i = 0; i < svgReset->mLayers.mImageCount; ++i)
+    svgReset->mLayers[i].TrackImages(aContext->PresContext());
 
   COMPUTE_END_RESET(SVGReset, svgReset)
 }
