@@ -561,8 +561,8 @@ nsSVGEffects::GetEffectProperties(nsIFrame *aFrame)
   } else {
     result.mClipPath = nullptr;
   }
-  //result.mMask =
-  //  GetPaintingProperty(style->mMask, aFrame, MaskProperty());
+  result.mMask =
+    GetPaintingProperty(style->mMask, aFrame, MaskProperty());
 
   return result;
 }

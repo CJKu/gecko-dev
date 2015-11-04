@@ -1005,7 +1005,7 @@ nsCSSRendering::PaintFocus(nsPresContext* aPresContext,
  * that function, except they're for a single coordinate / a single size
  * dimension. (so, x/width vs. y/height)
  */
-typedef nsStyleBackground::Position::PositionCoord PositionCoord;
+typedef nsStyleLayers::Position::PositionCoord PositionCoord;
 static void
 ComputeObjectAnchorCoord(const PositionCoord& aCoord,
                          const nscoord aOriginBounds,
@@ -1029,7 +1029,7 @@ ComputeObjectAnchorCoord(const PositionCoord& aCoord,
 
 void
 nsImageRenderer::ComputeObjectAnchorPoint(
-  const nsStyleBackground::Position& aPos,
+  const nsStyleLayers::Position& aPos,
   const nsSize& aOriginBounds,
   const nsSize& aImageSize,
   nsPoint* aTopLeft,
@@ -1746,11 +1746,11 @@ SetupDirtyRects(const nsRect& aBGClipArea, const nsRect& aCallerDirtyRect,
 }
 
 /* static */ void
-nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
-                                  nsIFrame* aForFrame, const nsStyleBorder& aBorder,
-                                  const nsRect& aBorderArea, const nsRect& aCallerDirtyRect,
-                                  bool aWillPaintBorder, nscoord aAppUnitsPerPixel,
-                                  /* out */ BackgroundClipState* aClipState)
+nsCSSRendering::GetLayerClip(const nsStyleLayers::Layer& aLayer,
+                             nsIFrame* aForFrame, const nsStyleBorder& aBorder,
+                             const nsRect& aBorderArea, const nsRect& aCallerDirtyRect,
+                             bool aWillPaintBorder, nscoord aAppUnitsPerPixel,
+                             /* out */ LayerClipState* aClipState)
 {
   // Compute the outermost boundary of the area that might be painted.
   // Same coordinate space as aBorderArea.
@@ -1765,12 +1765,12 @@ nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
 
   bool isSolidBorder =
       aWillPaintBorder && IsOpaqueBorder(aBorder);
-  if (isSolidBorder && backgroundClip == NS_STYLE_BG_CLIP_BORDER) {
+  if (isSolidBorder && backgroundClip == NS_STYLE_LAYER_CLIP_BORDER) {
     // If we have rounded corners, we need to inflate the background
     // drawing area a bit to avoid seams between the border and
     // background.
     backgroundClip = haveRoundedCorners ?
-      NS_STYLE_BG_CLIP_MOZ_ALMOST_PADDING : NS_STYLE_BG_CLIP_PADDING;
+      NS_STYLE_LAYER_CLIP_MOZ_ALMOST_PADDING : NS_STYLE_LAYER_CLIP_PADDING;
   }
 
   aClipState->mBGClipArea = clipBorderArea;
@@ -1778,7 +1778,7 @@ nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
   aClipState->mCustomClip = false;
 
   if (aForFrame->GetType() == nsGkAtoms::scrollFrame &&
-      NS_STYLE_BG_ATTACHMENT_LOCAL == aLayer.mAttachment) {
+      NS_STYLE_LAYER_ATTACHMENT_LOCAL == aLayer.mAttachment) {
     // As of this writing, this is still in discussion in the CSS Working Group
     // http://lists.w3.org/Archives/Public/www-style/2013Jul/0250.html
 
@@ -1786,7 +1786,7 @@ nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
     // but the background is also clipped at a non-scrolling 'padding-box'
     // like the content. (See below.)
     // Therefore, only 'content-box' makes a difference here.
-    if (backgroundClip == NS_STYLE_BG_CLIP_CONTENT) {
+    if (backgroundClip == NS_STYLE_LAYER_CLIP_CONTENT) {
       nsIScrollableFrame* scrollableFrame = do_QueryFrame(aForFrame);
       // Clip at a rectangle attached to the scrolled content.
       aClipState->mHasAdditionalBGClipArea = true;
@@ -1806,12 +1806,12 @@ nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
 
     // Also clip at a non-scrolling, rounded-corner 'padding-box',
     // same as the scrolled content because of the 'overflow' property.
-    backgroundClip = NS_STYLE_BG_CLIP_PADDING;
+    backgroundClip = NS_STYLE_LAYER_CLIP_PADDING;
   }
 
-  if (backgroundClip != NS_STYLE_BG_CLIP_BORDER) {
+  if (backgroundClip != NS_STYLE_LAYER_CLIP_BORDER) {
     nsMargin border = aForFrame->GetUsedBorder();
-    if (backgroundClip == NS_STYLE_BG_CLIP_MOZ_ALMOST_PADDING) {
+    if (backgroundClip == NS_STYLE_LAYER_CLIP_MOZ_ALMOST_PADDING) {
       // Reduce |border| by 1px (device pixels) on all sides, if
       // possible, so that we don't get antialiasing seams between the
       // background and border.
@@ -1819,8 +1819,8 @@ nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
       border.right = std::max(0, border.right - aAppUnitsPerPixel);
       border.bottom = std::max(0, border.bottom - aAppUnitsPerPixel);
       border.left = std::max(0, border.left - aAppUnitsPerPixel);
-    } else if (backgroundClip != NS_STYLE_BG_CLIP_PADDING) {
-      NS_ASSERTION(backgroundClip == NS_STYLE_BG_CLIP_CONTENT,
+    } else if (backgroundClip != NS_STYLE_LAYER_CLIP_PADDING) {
+      NS_ASSERTION(backgroundClip == NS_STYLE_LAYER_CLIP_CONTENT,
                    "unexpected background-clip");
       border += aForFrame->GetUsedPadding();
     }
@@ -1853,7 +1853,7 @@ nsCSSRendering::GetBackgroundClip(const nsStyleBackground::Layer& aLayer,
 }
 
 static void
-SetupBackgroundClip(nsCSSRendering::BackgroundClipState& aClipState,
+SetupLayerClip(nsCSSRendering::LayerClipState& aClipState,
                     gfxContext *aCtx, nscoord aAppUnitsPerPixel,
                     gfxContextAutoSaveRestore* aAutoSR)
 {
@@ -1912,7 +1912,7 @@ SetupBackgroundClip(nsCSSRendering::BackgroundClipState& aClipState,
 }
 
 static void
-DrawBackgroundColor(nsCSSRendering::BackgroundClipState& aClipState,
+DrawBackgroundColor(nsCSSRendering::LayerClipState& aClipState,
                     gfxContext *aCtx, nscoord aAppUnitsPerPixel)
 {
   if (aClipState.mDirtyRectGfx.IsEmpty()) {
@@ -2006,8 +2006,8 @@ nsCSSRendering::DetermineBackgroundColor(nsPresContext* aPresContext,
 
   // We can skip painting the background color if a background image is opaque.
   if (aDrawBackgroundColor &&
-      bg->BottomLayer().mRepeat.mXRepeat == NS_STYLE_BG_REPEAT_REPEAT &&
-      bg->BottomLayer().mRepeat.mYRepeat == NS_STYLE_BG_REPEAT_REPEAT &&
+      bg->BottomLayer().mRepeat.mXRepeat == NS_STYLE_LAYER_REPEAT_REPEAT &&
+      bg->BottomLayer().mRepeat.mYRepeat == NS_STYLE_LAYER_REPEAT_REPEAT &&
       bg->BottomLayer().mImage.IsOpaque() &&
       bg->BottomLayer().mBlendMode == NS_STYLE_BLEND_NORMAL) {
     aDrawBackgroundColor = false;
@@ -2851,7 +2851,8 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
                                       const nsStyleBorder& aBorder,
                                       uint32_t aFlags,
                                       nsRect* aBGClipRect,
-                                      int32_t aLayer)
+                                      int32_t aLayer,
+                                      bool aMask)
 {
   NS_PRECONDITION(aForFrame,
                   "Frame is expected to be provided to PaintBackground");
@@ -2862,7 +2863,7 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
   // renderer draw the background and bail out.
   // XXXzw this ignores aBGClipRect.
   const nsStyleDisplay* displayData = aForFrame->StyleDisplay();
-  if (displayData->mAppearance) {
+  if (displayData->mAppearance && !aMask) {
     nsITheme *theme = aPresContext->GetTheme();
     if (theme && theme->ThemeSupportsWidget(aPresContext, aForFrame,
                                             displayData->mAppearance)) {
@@ -2899,8 +2900,10 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
 
   // If we're drawing a specific layer, we don't want to draw the
   // background color.
-  const nsStyleBackground *bg = aBackgroundSC->StyleBackground();
-  if (drawBackgroundColor && aLayer >= 0) {
+
+  const nsStyleLayers &layers = aMask ? aBackgroundSC->StyleSVGReset()->mLayers :
+                                      aBackgroundSC->StyleBackground()->mLayers;
+  if ((drawBackgroundColor && aLayer >= 0) || aMask) {
     drawBackgroundColor = false;
   }
 
@@ -2926,7 +2929,7 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
   // taking the intersection breaks reftests/bugs/403249-1[ab].)
   gfxContext* ctx = aRenderingContext.ThebesContext();
   nscoord appUnitsPerPixel = aPresContext->AppUnitsPerDevPixel();
-  BackgroundClipState clipState;
+  LayerClipState clipState;
   if (aBGClipRect) {
     clipState.mBGClipArea = *aBGClipRect;
     clipState.mCustomClip = true;
@@ -2934,9 +2937,10 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
     SetupDirtyRects(clipState.mBGClipArea, aDirtyRect, appUnitsPerPixel,
                     &clipState.mDirtyRect, &clipState.mDirtyRectGfx);
   } else {
-    GetBackgroundClip(bg->BottomLayer(),
+    GetLayerClip(layers.BottomLayer(),
                       aForFrame, aBorder, aBorderArea,
-                      aDirtyRect, (aFlags & PAINTBG_WILL_PAINT_BORDER), appUnitsPerPixel,
+                      aDirtyRect, (aFlags & PAINTBG_WILL_PAINT_BORDER),
+                      appUnitsPerPixel,
                       &clipState);
   }
 
@@ -2958,8 +2962,8 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
     return DrawResult::SUCCESS;
   }
 
-  if (bg->mImageCount < 1) {
-    // Return if there are no background layers, all work from this point
+  if (layers.mImageCount < 1) {
+    // Return if there are no style layers, all work from this point
     // onwards happens iteratively on these.
     return DrawResult::SUCCESS;
   }
@@ -2968,16 +2972,16 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
   int32_t startLayer = aLayer;
   int32_t nLayers = 1;
   if (startLayer < 0) {
-    startLayer = (int32_t)bg->mImageCount - 1;
-    nLayers = bg->mImageCount;
+    startLayer = (int32_t)layers.mImageCount - 1;
+    nLayers = layers.mImageCount;
   }
 
   // Ensure we get invalidated for loads of the image.  We need to do
   // this here because this might be the only code that knows about the
   // association of the style data with the frame.
   if (aBackgroundSC != aForFrame->StyleContext()) {
-    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, bg, startLayer, nLayers) {
-      aForFrame->AssociateImage(bg->mLayers[i].mImage, aPresContext);
+    NS_FOR_VISIBLE_CSS_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, layers, startLayer, nLayers) {
+      aForFrame->AssociateImage(layers[i].mImage, aPresContext);
     }
   }
 
@@ -2989,24 +2993,24 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
 
   if (drawBackgroundImage) {
     bool clipSet = false;
-    uint8_t currentBackgroundClip = NS_STYLE_BG_CLIP_BORDER;
-    NS_FOR_VISIBLE_BACKGROUND_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, bg, bg->mImageCount - 1,
-                                                              nLayers + (bg->mImageCount -
+    uint8_t currentBackgroundClip = NS_STYLE_LAYER_CLIP_BORDER;
+    NS_FOR_VISIBLE_CSS_LAYERS_BACK_TO_FRONT_WITH_RANGE(i, layers, layers.mImageCount - 1,
+                                                              nLayers + (layers.mImageCount -
                                                                          startLayer - 1)) {
-      const nsStyleBackground::Layer &layer = bg->mLayers[i];
+      const nsStyleLayers::Layer &layer = layers[i];
       if (!aBGClipRect) {
         if (currentBackgroundClip != layer.mClip || !clipSet) {
           currentBackgroundClip = layer.mClip;
           // If clipSet is false that means this is the bottom layer and we
-          // already called GetBackgroundClip above and it stored its results
+          // already called GetLayerClip above and it stored its results
           // in clipState.
           if (clipSet) {
             autoSR.Restore(); // reset the previous one
-            GetBackgroundClip(layer, aForFrame,
+            GetLayerClip(layer, aForFrame,
                               aBorder, aBorderArea, aDirtyRect, (aFlags & PAINTBG_WILL_PAINT_BORDER),
                               appUnitsPerPixel, &clipState);
           }
-          SetupBackgroundClip(clipState, ctx, appUnitsPerPixel, &autoSR);
+          SetupLayerClip(clipState, ctx, appUnitsPerPixel, &autoSR);
           clipSet = true;
           if (!clipBorderArea.IsEqualEdges(aBorderArea)) {
             // We're drawing the background for the joined continuation boxes
@@ -3022,10 +3026,9 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
       }
       if ((aLayer < 0 || i == (uint32_t)startLayer) &&
           !clipState.mDirtyRectGfx.IsEmpty()) {
-        nsBackgroundLayerState state = PrepareBackgroundLayer(aPresContext, aForFrame,
-            aFlags, paintBorderArea, clipState.mBGClipArea, layer);
+        nsBackgroundLayerState state = PrepareLayer(aPresContext, aForFrame,
+            aFlags, paintBorderArea, clipState.mBGClipArea, layer, aMask);
         result &= state.mImageRenderer.PrepareResult();
-
         if (!state.mFillArea.IsEmpty()) {
           if (state.mCompositionOp != CompositionOp::OP_OVER) {
             NS_ASSERTION(ctx->CurrentOp() == CompositionOp::OP_OVER,
@@ -3062,10 +3065,10 @@ IsTransformed(nsIFrame* aForFrame, nsIFrame* aTopFrame)
 }
 
 nsRect
-nsCSSRendering::ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
+nsCSSRendering::ComputeLayerPositioningArea(nsPresContext* aPresContext,
                                                  nsIFrame* aForFrame,
                                                  const nsRect& aBorderArea,
-                                                 const nsStyleBackground::Layer& aLayer,
+                                                 const nsStyleLayers::Layer& aLayer,
                                                  nsIFrame** aAttachedToFrame)
 {
   // Compute background origin area relative to aBorderArea now as we may need
@@ -3075,7 +3078,7 @@ nsCSSRendering::ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
   nsIAtom* frameType = aForFrame->GetType();
   nsIFrame* geometryFrame = aForFrame;
   if (MOZ_UNLIKELY(frameType == nsGkAtoms::scrollFrame &&
-                   NS_STYLE_BG_ATTACHMENT_LOCAL == aLayer.mAttachment)) {
+                   NS_STYLE_LAYER_ATTACHMENT_LOCAL == aLayer.mAttachment)) {
     nsIScrollableFrame* scrollableFrame = do_QueryFrame(aForFrame);
     bgPositioningArea = nsRect(
       scrollableFrame->GetScrolledFrame()->GetPosition()
@@ -3085,16 +3088,16 @@ nsCSSRendering::ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
     // The ScrolledRect’s size does not include the borders or scrollbars,
     // reverse the handling of background-origin
     // compared to the common case below.
-    if (aLayer.mOrigin == NS_STYLE_BG_ORIGIN_BORDER) {
+    if (aLayer.mOrigin == NS_STYLE_LAYER_ORIGIN_BORDER) {
       nsMargin border = geometryFrame->GetUsedBorder();
       border.ApplySkipSides(geometryFrame->GetSkipSides());
       bgPositioningArea.Inflate(border);
       bgPositioningArea.Inflate(scrollableFrame->GetActualScrollbarSizes());
-    } else if (aLayer.mOrigin != NS_STYLE_BG_ORIGIN_PADDING) {
+    } else if (aLayer.mOrigin != NS_STYLE_LAYER_ORIGIN_PADDING) {
       nsMargin padding = geometryFrame->GetUsedPadding();
       padding.ApplySkipSides(geometryFrame->GetSkipSides());
       bgPositioningArea.Deflate(padding);
-      NS_ASSERTION(aLayer.mOrigin == NS_STYLE_BG_ORIGIN_CONTENT,
+      NS_ASSERTION(aLayer.mOrigin == NS_STYLE_LAYER_ORIGIN_CONTENT,
                    "unknown background-origin value");
     }
     *aAttachedToFrame = aForFrame;
@@ -3116,18 +3119,18 @@ nsCSSRendering::ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
 
   // Background images are tiled over the 'background-clip' area
   // but the origin of the tiling is based on the 'background-origin' area
-  if (aLayer.mOrigin != NS_STYLE_BG_ORIGIN_BORDER && geometryFrame) {
+  if (aLayer.mOrigin != NS_STYLE_LAYER_ORIGIN_BORDER && geometryFrame) {
     nsMargin border = geometryFrame->GetUsedBorder();
-    if (aLayer.mOrigin != NS_STYLE_BG_ORIGIN_PADDING) {
+    if (aLayer.mOrigin != NS_STYLE_LAYER_ORIGIN_PADDING) {
       border += geometryFrame->GetUsedPadding();
-      NS_ASSERTION(aLayer.mOrigin == NS_STYLE_BG_ORIGIN_CONTENT,
+      NS_ASSERTION(aLayer.mOrigin == NS_STYLE_LAYER_ORIGIN_CONTENT,
                    "unknown background-origin value");
     }
     bgPositioningArea.Deflate(border);
   }
 
   nsIFrame* attachedToFrame = aForFrame;
-  if (NS_STYLE_BG_ATTACHMENT_FIXED == aLayer.mAttachment) {
+  if (NS_STYLE_LAYER_ATTACHMENT_FIXED == aLayer.mAttachment) {
     // If it's a fixed background attachment, then the image is placed
     // relative to the viewport, which is the area of the root frame
     // in a screen context or the page content frame in a print context.
@@ -3170,13 +3173,13 @@ nsCSSRendering::ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
 static nsSize
 ComputeDrawnSizeForBackground(const CSSSizeOrRatio& aIntrinsicSize,
                               const nsSize& aBgPositioningArea,
-                              const nsStyleBackground::Size& aLayerSize)
+                              const nsStyleLayers::Size& aLayerSize)
 {
   // Size is dictated by cover or contain rules.
-  if (aLayerSize.mWidthType == nsStyleBackground::Size::eContain ||
-      aLayerSize.mWidthType == nsStyleBackground::Size::eCover) {
+  if (aLayerSize.mWidthType == nsStyleLayers::Size::eContain ||
+      aLayerSize.mWidthType == nsStyleLayers::Size::eCover) {
     nsImageRenderer::FitType fitType =
-      aLayerSize.mWidthType == nsStyleBackground::Size::eCover
+      aLayerSize.mWidthType == nsStyleLayers::Size::eCover
         ? nsImageRenderer::COVER
         : nsImageRenderer::CONTAIN;
     return nsImageRenderer::ComputeConstrainedSize(aBgPositioningArea,
@@ -3186,11 +3189,11 @@ ComputeDrawnSizeForBackground(const CSSSizeOrRatio& aIntrinsicSize,
 
   // No cover/contain constraint, use default algorithm.
   CSSSizeOrRatio specifiedSize;
-  if (aLayerSize.mWidthType == nsStyleBackground::Size::eLengthPercentage) {
+  if (aLayerSize.mWidthType == nsStyleLayers::Size::eLengthPercentage) {
     specifiedSize.SetWidth(
       aLayerSize.ResolveWidthLengthPercentage(aBgPositioningArea));
   }
-  if (aLayerSize.mHeightType == nsStyleBackground::Size::eLengthPercentage) {
+  if (aLayerSize.mHeightType == nsStyleLayers::Size::eLengthPercentage) {
     specifiedSize.SetHeight(
       aLayerSize.ResolveHeightLengthPercentage(aBgPositioningArea));
   }
@@ -3201,26 +3204,29 @@ ComputeDrawnSizeForBackground(const CSSSizeOrRatio& aIntrinsicSize,
 }
 
 nsBackgroundLayerState
-nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
+nsCSSRendering::PrepareLayer(nsPresContext* aPresContext,
                                        nsIFrame* aForFrame,
                                        uint32_t aFlags,
                                        const nsRect& aBorderArea,
                                        const nsRect& aBGClipRect,
-                                       const nsStyleBackground::Layer& aLayer)
+                                       const nsStyleLayers::Layer& aLayer,
+                                       bool aMask)
 {
   /*
-   * The properties we need to keep in mind when drawing background
+   * The properties we need to keep in mind when drawing style
    * layers are:
    *
-   *   background-image
-   *   background-repeat
+   *   background-image/ mask-image
+   *   background-repeat/ mask-repeat
    *   background-attachment
-   *   background-position
-   *   background-clip
-   *   background-origin
-   *   background-size
+   *   background-position/ mask-position
+   *   background-clip/ mask-clip
+   *   background-origin/ mask-origin
+   *   background-size/ mask-size
    *   background-blend-mode
    *   box-decoration-break
+   *   mask-mode
+   *   mask-composite
    *
    * (background-color applies to the entire element and not to individual
    * layers, so it is irrelevant to this method.)
@@ -3228,21 +3234,21 @@ nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
    * These properties have the following dependencies upon each other when
    * determining rendering:
    *
-   *   background-image
+   *   background-image/ mask-image
    *     no dependencies
-   *   background-repeat
+   *   background-repeat/ mask-repeat
    *     no dependencies
    *   background-attachment
    *     no dependencies
-   *   background-position
-   *     depends upon background-size (for the image's scaled size) and
-   *     background-break (for the background positioning area)
-   *   background-clip
+   *   background-position/ mask-position
+   *     depends upon background-size/mask-size (for the image's scaled size)
+   *     and background-break (for the background positioning area)
+   *   background-clip/ mask-clip
    *     no dependencies
-   *   background-origin
+   *   background-origin/ mask-origin
    *     depends upon background-attachment (only in the case where that value
    *     is 'fixed')
-   *   background-size
+   *   background-size/ mask-size
    *     depends upon box-decoration-break (for the background positioning area
    *     for resolving percentages), background-image (for the image's intrinsic
    *     size), background-repeat (if that value is 'round'), and
@@ -3254,13 +3260,13 @@ nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
    * As a result of only-if dependencies we don't strictly do a topological
    * sort of the above properties when processing, but it's pretty close to one:
    *
-   *   background-clip (by caller)
-   *   background-image
-   *   box-decoration-break, background-origin
+   *   background-clip/mask-clip (by caller)
+   *   background-image/ mask-image
+   *   box-decoration-break, background-origin/ mask origin
    *   background-attachment (postfix for background-origin if 'fixed')
-   *   background-size
-   *   background-position
-   *   background-repeat
+   *   background-size/ mask-size
+   *   background-position/ mask-position
+   *   background-repeat/ mask-repeat
    */
 
   uint32_t irFlags = 0;
@@ -3282,7 +3288,7 @@ nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
   // Compute background origin area relative to aBorderArea now as we may need
   // it to compute the effective image size for a CSS gradient.
   nsRect bgPositioningArea =
-    ComputeBackgroundPositioningArea(aPresContext, aForFrame, aBorderArea,
+    ComputeLayerPositioningArea(aPresContext, aForFrame, aBorderArea,
                                      aLayer, &attachedToFrame);
 
   // For background-attachment:fixed backgrounds, we'll limit the area
@@ -3294,7 +3300,7 @@ nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
   // relative to aBorderArea.TopLeft() (which is where the top-left
   // of aForFrame's border-box will be rendered)
   nsPoint imageTopLeft;
-  if (NS_STYLE_BG_ATTACHMENT_FIXED == aLayer.mAttachment) {
+  if (NS_STYLE_LAYER_ATTACHMENT_FIXED == aLayer.mAttachment) {
     if ((aFlags & nsCSSRendering::PAINTBG_TO_WINDOW) &&
         !IsTransformed(aForFrame, attachedToFrame)) {
       // Clip background-attachment:fixed backgrounds to the viewport, if we're
@@ -3334,17 +3340,18 @@ nsCSSRendering::PrepareBackgroundLayer(nsPresContext* aPresContext,
   state.mFillArea = state.mDestArea;
   int repeatX = aLayer.mRepeat.mXRepeat;
   int repeatY = aLayer.mRepeat.mYRepeat;
-  if (repeatX == NS_STYLE_BG_REPEAT_REPEAT) {
+  if (repeatX == NS_STYLE_LAYER_REPEAT_REPEAT) {
     state.mFillArea.x = bgClipRect.x;
     state.mFillArea.width = bgClipRect.width;
   }
-  if (repeatY == NS_STYLE_BG_REPEAT_REPEAT) {
+  if (repeatY == NS_STYLE_LAYER_REPEAT_REPEAT) {
     state.mFillArea.y = bgClipRect.y;
     state.mFillArea.height = bgClipRect.height;
   }
   state.mFillArea.IntersectRect(state.mFillArea, bgClipRect);
 
-  state.mCompositionOp = GetGFXBlendMode(aLayer.mBlendMode);
+  state.mCompositionOp = aMask ? GetGFXCompositeMode(aLayer.mComposite) :
+                                 GetGFXBlendMode(aLayer.mBlendMode);
 
   return state;
 }
@@ -3354,14 +3361,14 @@ nsCSSRendering::GetBackgroundLayerRect(nsPresContext* aPresContext,
                                        nsIFrame* aForFrame,
                                        const nsRect& aBorderArea,
                                        const nsRect& aClipRect,
-                                       const nsStyleBackground::Layer& aLayer,
+                                       const nsStyleLayers::Layer& aLayer,
                                        uint32_t aFlags)
 {
   Sides skipSides = aForFrame->GetSkipSides();
   nsRect borderArea =
     ::BoxDecorationRectForBackground(aForFrame, aBorderArea, skipSides);
   nsBackgroundLayerState state =
-      PrepareBackgroundLayer(aPresContext, aForFrame, aFlags, borderArea,
+      PrepareLayer(aPresContext, aForFrame, aFlags, borderArea,
                              aClipRect, aLayer);
   return state.mFillArea;
 }
@@ -4837,7 +4844,7 @@ nsImageRenderer::ComputeIntrinsicSize()
       //     and that element's ratio, if it matches.  If it doesn't match, it
       //     should have no width/height or ratio.  See element() in CSS images:
       //     <http://dev.w3.org/csswg/css-images-4/#element-notation>.
-      //     Make sure to change nsStyleBackground::Size::DependsOnFrameSize
+      //     Make sure to change nsStyleLayers::Size::DependsOnFrameSize
       //     when fixing this!
       if (mPaintServerFrame) {
         // SVG images have no intrinsic size

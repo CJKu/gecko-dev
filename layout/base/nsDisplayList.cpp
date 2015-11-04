@@ -2157,7 +2157,7 @@ nsDisplayBackgroundImage::GetDestAreaInternal(nsDisplayListBuilder* aBuilder)
   const nsStyleLayers::Layer &layer = mBackgroundStyle->mLayers[mLayer];
 
   nsBackgroundLayerState state =
-    nsCSSRendering::PrepareBackgroundLayer(presContext, mFrame, flags,
+    nsCSSRendering::PrepareLayer(presContext, mFrame, flags,
                                            borderArea, borderArea, layer);
   return state.mDestArea;
 }
@@ -2200,8 +2200,8 @@ SetBackgroundClipRegion(DisplayListClipState::AutoSaveRestore& aClipState,
 {
   nsRect borderBox = nsRect(aToReferenceFrame, aFrame->GetSize());
 
-  nsCSSRendering::BackgroundClipState clip;
-  nsCSSRendering::GetBackgroundClip(aLayer, aFrame, *aFrame->StyleBorder(),
+  nsCSSRendering::LayerClipState clip;
+  nsCSSRendering::GetLayerClip(aLayer, aFrame, *aFrame->StyleBorder(),
                                     borderBox, borderBox, aWillPaintBorder,
                                     aFrame->PresContext()->AppUnitsPerDevPixel(),
                                     &clip);
@@ -2382,7 +2382,7 @@ nsDisplayBackgroundImage::IsSingleFixedPositionImage(nsDisplayListBuilder* aBuil
     return false;
 
   nsBackgroundLayerState state =
-    nsCSSRendering::PrepareBackgroundLayer(presContext, mFrame, flags,
+    nsCSSRendering::PrepareLayer(presContext, mFrame, flags,
                                            borderArea, aClipRect, layer);
   nsImageRenderer* imageRenderer = &state.mImageRenderer;
   // We only care about images here, not gradients.
@@ -2431,7 +2431,7 @@ nsDisplayBackgroundImage::CanOptimizeToImageLayer(LayerManager* aManager,
   const nsStyleLayers::Layer &layer = mBackgroundStyle->mLayers[mLayer];
 
   nsBackgroundLayerState state =
-    nsCSSRendering::PrepareBackgroundLayer(presContext, mFrame, flags,
+    nsCSSRendering::PrepareLayer(presContext, mFrame, flags,
                                            borderArea, borderArea, layer);
   nsImageRenderer* imageRenderer = &state.mImageRenderer;
   // We only care about images here, not gradients.
@@ -2722,7 +2722,7 @@ nsDisplayBackgroundImage::GetPositioningArea()
     return nsRect();
   }
   nsIFrame* attachedToFrame;
-  return nsCSSRendering::ComputeBackgroundPositioningArea(
+  return nsCSSRendering::ComputeLayerPositioningArea(
       mFrame->PresContext(), mFrame,
       nsRect(ToReferenceFrame(), mFrame->GetSize()),
       mBackgroundStyle->mLayers[mLayer],
@@ -6010,8 +6010,10 @@ nsDisplaySVGEffects::PaintAsLayer(nsDisplayListBuilder* aBuilder,
                                   nsRenderingContext* aCtx,
                                   LayerManager* aManager)
 {
+  nsRect borderArea = nsRect(ToReferenceFrame(), mFrame->GetSize());
   nsSVGIntegrationUtils::PaintFramesWithEffects(*aCtx->ThebesContext(), mFrame,
                                                 mVisibleRect,
+                                                borderArea,
                                                 aBuilder, aManager);
 }
 
