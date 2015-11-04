@@ -537,7 +537,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundAttachmentKTable,
+    kLayerAttachmentKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -550,7 +550,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundOriginKTable,
+    kLayerOriginKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -605,7 +605,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundOriginKTable,
+    kLayerOriginKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -620,7 +620,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_STORES_CALC,
     "",
     0,
-    kBackgroundPositionKTable,
+    kLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_BACKGROUND(
@@ -633,7 +633,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundRepeatKTable,
+    kLayerRepeatKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -648,7 +648,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_STORES_CALC,
     "",
     0,
-    kBackgroundSizeKTable,
+    kLayerSizeKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_DISPLAY(
@@ -2582,7 +2582,7 @@ CSS_PROP_POSITION(
         CSS_PROPERTY_ENABLED_IN_UA_SHEETS,
     "layout.css.object-fit-and-position.enabled",
     0,
-    kBackgroundPositionKTable,
+    kLayerPositionKTable,
     offsetof(nsStylePosition, mObjectPosition),
     eStyleAnimType_Custom)
 CSS_PROP_LOGICAL(
@@ -3063,7 +3063,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_STORES_CALC,
     "layout.css.scroll-snap.enabled",
     0,
-    kBackgroundPositionKTable,
+    kLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_DISPLAY(
@@ -3075,7 +3075,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_STORES_CALC,
     "layout.css.scroll-snap.enabled",
     0,
-    kBackgroundPositionKTable,
+    kLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_DISPLAY(
@@ -3321,7 +3321,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_GETCS_NEEDS_LAYOUT_FLUSH,
     "",
     0,
-    kBackgroundPositionKTable,
+    kLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_DISPLAY(
@@ -3333,7 +3333,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_GETCS_NEEDS_LAYOUT_FLUSH,
     "",
     0,
-    kBackgroundPositionKTable,
+    kLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_DISPLAY(
@@ -3961,15 +3961,124 @@ CSS_PROP_SVG(
     nullptr,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
-CSS_PROP_SVGRESET(
+CSS_PROP_SHORTHAND(
     mask,
     mask,
     Mask,
-    CSS_PROPERTY_PARSE_VALUE |
-        CSS_PROPERTY_CREATES_STACKING_CONTEXT,
+    CSS_PROPERTY_PARSE_FUNCTION,
+    "")
+CSS_PROP_SVGRESET(
+    mask-image,
+    mask_image,
+    MaskImage,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_CREATES_STACKING_CONTEXT |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
+        CSS_PROPERTY_IGNORED_WHEN_COLORS_DISABLED |
+        CSS_PROPERTY_START_IMAGE_LOADS,
     "",
-    VARIANT_HUO,
+    VARIANT_IMAGE,
     nullptr,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-repeat,
+    mask_repeat,
+    MaskRepeat,
+    CSS_PROPERTY_PARSE_FUNCTION |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kLayerRepeatKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-origin,
+    mask_origin,
+    MaskOrigin,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kLayerOriginKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-clip,
+    mask_clip,
+    MaskClip,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kLayerOriginKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+// TBD
+// Copy from background-position, which animation type is eStyleAnimType_Custom
+// Need to do something in StyleAnimationValue::ExtractComputedValue.
+CSS_PROP_SVGRESET(
+    mask-position,
+    mask_position,
+    MaskPosition,
+    CSS_PROPERTY_PARSE_FUNCTION |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
+        CSS_PROPERTY_UNITLESS_LENGTH_QUIRK |
+        CSS_PROPERTY_STORES_CALC,
+    "",
+    0,
+    kLayerPositionKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-size,
+    mask_size,
+    MaskSize,
+    CSS_PROPERTY_PARSE_FUNCTION |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
+        CSS_PROPERTY_VALUE_NONNEGATIVE |
+        CSS_PROPERTY_STORES_CALC,
+    "",
+    0,
+    kLayerSizeKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-mode,
+    mask_mode,
+    MaskMode,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kLayerModeKTable,
+    CSS_PROP_NO_OFFSET,
+    eStyleAnimType_None)
+CSS_PROP_SVGRESET(
+    mask-composite,
+    mask_composite,
+    MaskComposite,
+    CSS_PROPERTY_PARSE_VALUE_LIST |
+        CSS_PROPERTY_APPLIES_TO_FIRST_LETTER_AND_FIRST_LINE |
+        CSS_PROPERTY_APPLIES_TO_PLACEHOLDER |
+        CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
+    "",
+    VARIANT_KEYWORD, // used by list parsing
+    kLayerCompositeKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_SVGRESET(
