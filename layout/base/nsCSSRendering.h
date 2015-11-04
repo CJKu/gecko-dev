@@ -302,7 +302,7 @@ private:
 /**
  * A struct representing all the information needed to paint a background
  * image to some target, taking into account all CSS background-* properties.
- * See PrepareBackgroundLayer.
+ * See PrepareLayer.
  */
 struct nsBackgroundLayerState {
   typedef mozilla::gfx::CompositionOp CompositionOp;
@@ -323,19 +323,19 @@ struct nsBackgroundLayerState {
   /**
    * A rectangle that one copy of the image tile is mapped onto. Same
    * coordinate system as aBorderArea/aBGClipRect passed into
-   * PrepareBackgroundLayer.
+   * PrepareLayer.
    */
   nsRect mDestArea;
   /**
    * The actual rectangle that should be filled with (complete or partial)
    * image tiles. Same coordinate system as aBorderArea/aBGClipRect passed into
-   * PrepareBackgroundLayer.
+   * PrepareLayer.
    */
   nsRect mFillArea;
   /**
    * The anchor point that should be snapped to a pixel corner. Same
    * coordinate system as aBorderArea/aBGClipRect passed into
-   * PrepareBackgroundLayer.
+   * PrepareLayer.
    */
   nsPoint mAnchor;
   /**
@@ -531,22 +531,22 @@ struct nsCSSRendering {
                            bool& aDrawBackgroundColor);
 
   static nsRect
-  ComputeBackgroundPositioningArea(nsPresContext* aPresContext,
-                                   nsIFrame* aForFrame,
-                                   const nsRect& aBorderArea,
-                                   const nsStyleLayers::Layer& aLayer,
-                                   nsIFrame** aAttachedToFrame);
+  ComputeLayerPositioningArea(nsPresContext* aPresContext,
+                              nsIFrame* aForFrame,
+                              const nsRect& aBorderArea,
+                              const nsStyleLayers::Layer& aLayer,
+                              nsIFrame** aAttachedToFrame);
 
   static nsBackgroundLayerState
-  PrepareBackgroundLayer(nsPresContext* aPresContext,
-                         nsIFrame* aForFrame,
-                         uint32_t aFlags,
-                         const nsRect& aBorderArea,
-                         const nsRect& aBGClipRect,
-                         const nsStyleLayers::Layer& aLayer,
-                         bool aMask = false);
+  PrepareLayer(nsPresContext* aPresContext,
+               nsIFrame* aForFrame,
+               uint32_t aFlags,
+               const nsRect& aBorderArea,
+               const nsRect& aBGClipRect,
+               const nsStyleLayers::Layer& aLayer,
+               bool aMask = false);
 
-  struct BackgroundClipState {
+  struct LayerClipState {
     nsRect mBGClipArea;  // Affected by mClippedRadii
     nsRect mAdditionalBGClipArea;  // Not affected by mClippedRadii
     nsRect mDirtyRect;
@@ -563,11 +563,11 @@ struct nsCSSRendering {
   };
 
   static void
-  GetBackgroundClip(const nsStyleLayers::Layer& aLayer,
-                    nsIFrame* aForFrame, const nsStyleBorder& aBorder, const nsRect& aBorderArea,
-                    const nsRect& aCallerDirtyRect, bool aWillPaintBorder,
-                    nscoord aAppUnitsPerPixel,
-                    /* out */ BackgroundClipState* aClipState);
+  GetLayerClip(const nsStyleLayers::Layer& aLayer,
+               nsIFrame* aForFrame, const nsStyleBorder& aBorder, const nsRect& aBorderArea,
+               const nsRect& aCallerDirtyRect, bool aWillPaintBorder,
+               nscoord aAppUnitsPerPixel,
+               /* out */ LayerClipState* aClipState);
 
   /**
    * Render the background for an element using css rendering rules
