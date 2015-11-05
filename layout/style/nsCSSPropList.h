@@ -4056,7 +4056,7 @@ CSS_PROP_SVGRESET(
     0,
     kLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
-    eStyleAnimType_None)
+    eStyleAnimType_Custom)
 CSS_PROP_SVGRESET(
     mask-size,
     mask_size,
@@ -4071,7 +4071,7 @@ CSS_PROP_SVGRESET(
     0,
     kLayerSizeKTable,
     CSS_PROP_NO_OFFSET,
-    eStyleAnimType_None)
+    eStyleAnimType_Custom)
 CSS_PROP_SVGRESET(
     mask-mode,
     mask_mode,

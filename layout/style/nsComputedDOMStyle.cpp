@@ -2155,7 +2155,7 @@ nsComputedDOMStyle::DoGetMaskImage()
     nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
     valueList->AppendCSSValue(val);
 
-    const nsStyleImage& image = svgReset->mLayers[i].mImage;
+    const nsStyleImage& image = svgReset->mLayers.mLayers[i].mImage;
     SetValueToStyleImage(image, val);
   }
 
@@ -2264,7 +2264,7 @@ nsComputedDOMStyle::DoGetMaskPosition()
     nsDOMCSSValueList *itemList = GetROCSSValueList(false);
     valueList->AppendCSSValue(itemList);
 
-    SetValueToPosition(svgReset->mLayers[i].mPosition, itemList);
+    SetValueToPosition(svgReset->mLayers.mLayers[i].mPosition, itemList);
   }
 
   return valueList;
@@ -2332,8 +2332,8 @@ nsComputedDOMStyle::DoGetMaskRepeat()
     nsROCSSPrimitiveValue *valX = new nsROCSSPrimitiveValue;
     itemList->AppendCSSValue(valX);
 
-    const uint8_t& xRepeat = svgReset->mLayers[i].mRepeat.mXRepeat;
-    const uint8_t& yRepeat = svgReset->mLayers[i].mRepeat.mYRepeat;
+    const uint8_t& xRepeat = svgReset->mLayers.mLayers[i].mRepeat.mXRepeat;
+    const uint8_t& yRepeat = svgReset->mLayers.mLayers[i].mRepeat.mYRepeat;
 
     bool hasContraction = true;
     unsigned contraction;
@@ -2456,7 +2456,7 @@ nsComputedDOMStyle::DoGetMaskSize()
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
   for (uint32_t i = 0, i_end = svgReset->mLayers.mSizeCount; i < i_end; ++i) {
-    const nsStyleImageLayers::Size &size = svgReset->mLayers[i].mSize;
+    const nsStyleImageLayers::Size &size = svgReset->mLayers.mLayers[i].mSize;
 
     switch (size.mWidthType) {
       case nsStyleImageLayers::Size::eContain:

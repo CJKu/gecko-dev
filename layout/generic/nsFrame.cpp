@@ -811,17 +811,19 @@ nsFrame::DidSetStyleContext(nsStyleContext* aOldStyleContext)
       imageLoader->AssociateRequestToFrame(newImage.GetImageData(), this);
     }
   }
-
+  // TBD: create a function for background and svgreset style. don't dup the code.
   const nsStyleSVGReset *oldSVGReset = aOldStyleContext ?
                                    aOldStyleContext->StyleSVGReset() :
                                    nullptr;
   const nsStyleSVGReset *newSVGReset = StyleSVGReset();
+  const nsStyleImageLayers& oldMaskLayers = oldSVGReset->mLayers;
+  const nsStyleImageLayers& newMaskLayers = newSVGReset->mLayers;
   if (oldSVGReset) {
-    NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, oldSVGReset->mLayers) {
+    NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, oldMaskLayers) {
       // If there is an image in oldSVGReset that's not in newSVGReset, drop it.
-      if (i >= newSVGReset->mLayers.mImageCount ||
-          !oldSVGReset->mLayers[i].mImage.ImageDataEquals(newSVGReset->mLayers[i].mImage)) {
-        const nsStyleImage& oldImage = oldSVGReset->mLayers[i].mImage;
+      if (i >= oldMaskLayers.mImageCount ||
+          !oldMaskLayers.mLayers[i].mImage.ImageDataEquals(newMaskLayers.mLayers[i].mImage)) {
+        const nsStyleImage& oldImage = oldMaskLayers.mLayers[i].mImage;
         if (oldImage.GetType() != eStyleImageType_Image) {
           continue;
         }
@@ -832,11 +834,11 @@ nsFrame::DidSetStyleContext(nsStyleContext* aOldStyleContext)
     }
   }
 
-  NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, newSVGReset->mLayers) {
+  NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, newMaskLayers) {
     // If there is an image in newSVGReset that's not in oldBG, add it.
-    if (!oldBG || i >= oldBG->mLayers.mImageCount ||
-        !newSVGReset->mLayers[i].mImage.ImageDataEquals(oldBG->mLayers[i].mImage)) {
-      const nsStyleImage& newImage = newSVGReset->mLayers[i].mImage;
+    if (!oldSVGReset || i >= oldMaskLayers.mImageCount ||
+        !newMaskLayers.mLayers[i].mImage.ImageDataEquals(oldMaskLayers.mLayers[i].mImage)) {
+      const nsStyleImage& newImage = newMaskLayers.mLayers[i].mImage;
       if (newImage.GetType() != eStyleImageType_Image) {
         continue;
       }

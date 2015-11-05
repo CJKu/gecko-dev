@@ -798,10 +798,10 @@ struct nsCSSRendering {
 
   static CompositionOp GetGFXCompositeMode(uint8_t mBlendMode) {
     switch (mBlendMode) {
-      case NS_STYLE_COMPOSITE_ADD:       return CompositionOp::OP_OVER;
-      case NS_STYLE_COMPOSITE_SUBTRACT:  return CompositionOp::OP_OUT;
-      case NS_STYLE_COMPOSITE_INTERSECT: return CompositionOp::OP_IN;
-      case NS_STYLE_COMPOSITE_EXCLUDE:   return CompositionOp::OP_XOR;
+      case NS_STYLE_COMPOSITE_MODE_ADD:       return CompositionOp::OP_OVER;
+      case NS_STYLE_COMPOSITE_MODE_SUBTRACT:  return CompositionOp::OP_OUT;
+      case NS_STYLE_COMPOSITE_MODE_INTERSECT: return CompositionOp::OP_IN;
+      case NS_STYLE_COMPOSITE_MODE_EXCLUDE:   return CompositionOp::OP_XOR;
       default:
         MOZ_ASSERT(false); return CompositionOp::OP_OVER;
     }
