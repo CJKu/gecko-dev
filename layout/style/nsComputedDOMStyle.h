@@ -36,6 +36,7 @@ class nsDOMCSSValueList;
 struct nsMargin;
 class nsROCSSPrimitiveValue;
 struct nsStyleBackground;
+struct nsStyleLayers;
 class nsStyleCoord;
 class nsStyleCorners;
 struct nsStyleFilter;
@@ -188,8 +189,9 @@ private:
                                             const nscolor& aDefaultColor,
                                             bool aIsBoxShadow);
 
-  mozilla::dom::CSSValue* GetBackgroundList(uint8_t nsStyleBackground::Layer::* aMember,
-                                            uint32_t nsStyleBackground::* aCount,
+  mozilla::dom::CSSValue* GetBackgroundList(uint8_t nsStyleLayers::Layer::* aMember,
+                                            uint32_t nsStyleLayers::* aCount,
+                                            const nsStyleLayers& aLayers,
                                             const KTableValue aTable[]);
 
   void GetCSSGradientString(const nsStyleGradient* aGradient,
@@ -277,6 +279,16 @@ private:
   mozilla::dom::CSSValue* DoGetBackgroundBlendMode();
   mozilla::dom::CSSValue* DoGetBackgroundOrigin();
   mozilla::dom::CSSValue* DoGetBackgroundSize();
+
+  /* Mask properties */
+  mozilla::dom::CSSValue* DoGetMaskImage();
+  mozilla::dom::CSSValue* DoGetMaskPosition();
+  mozilla::dom::CSSValue* DoGetMaskRepeat();
+  mozilla::dom::CSSValue* DoGetMaskClip();
+  mozilla::dom::CSSValue* DoGetMaskOrigin();
+  mozilla::dom::CSSValue* DoGetMaskSize();
+  mozilla::dom::CSSValue* DoGetMaskMode();
+  mozilla::dom::CSSValue* DoGetMaskComposite();
 
   /* Padding properties */
   mozilla::dom::CSSValue* DoGetPaddingTop();
@@ -523,7 +535,6 @@ private:
 
   mozilla::dom::CSSValue* DoGetClipPath();
   mozilla::dom::CSSValue* DoGetFilter();
-  mozilla::dom::CSSValue* DoGetMask();
   mozilla::dom::CSSValue* DoGetMaskType();
   mozilla::dom::CSSValue* DoGetPaintOrder();
 
@@ -537,9 +548,9 @@ private:
   void SetValueToStyleImage(const nsStyleImage& aStyleImage,
                             nsROCSSPrimitiveValue* aValue);
   void SetValueToPositionCoord(
-    const nsStyleBackground::Position::PositionCoord& aCoord,
+    const nsStyleLayers::Position::PositionCoord& aCoord,
     nsROCSSPrimitiveValue* aValue);
-  void SetValueToPosition(const nsStyleBackground::Position& aPosition,
+  void SetValueToPosition(const nsStyleLayers::Position& aPosition,
                           nsDOMCSSValueList* aValueList);
 
   /**
