@@ -833,6 +833,7 @@ StyleAnimationValue::ComputeDistance(nsCSSProperty aProperty,
     case eUnit_Transform: {
       return false;
     }
+    case eUnit_MaskPosition:
     case eUnit_BackgroundPosition: {
       const nsCSSValueList *position1 = aStartValue.GetCSSValueListValue();
       const nsCSSValueList *position2 = aEndValue.GetCSSValueListValue();
@@ -2435,6 +2436,32 @@ StyleAnimationValue::AddWeighted(nsCSSProperty aProperty,
                                                 eUnit_BackgroundPosition);
       return true;
     }
+    case eUnit_MaskPosition: {
+      const nsCSSValueList *position1 = aValue1.GetCSSValueListValue();
+      const nsCSSValueList *position2 = aValue2.GetCSSValueListValue();
+      nsAutoPtr<nsCSSValueList> result;
+      nsCSSValueList **resultTail = getter_Transfers(result);
+      while (position1 && position2) {
+        nsCSSValueList *item = new nsCSSValueList;
+        *resultTail = item;
+        resultTail = &item->mNext;
+
+        AddPositions(aCoeff1, position1->mValue,
+                     aCoeff2, position2->mValue, item->mValue);
+
+        position1 = position1->mNext;
+        position2 = position2->mNext;
+      }
+
+      // Check for different lengths
+      if (position1 || position2) {
+        return false;
+      }
+
+      aResultValue.SetAndAdoptCSSValueListValue(result.forget(),
+                                                eUnit_MaskPosition);
+      return true;
+    }
     case eUnit_CSSValuePairList: {
       const nsCSSValuePairList *list1 = aValue1.GetCSSValuePairListValue();
       const nsCSSValuePairList *list2 = aValue2.GetCSSValuePairListValue();
@@ -2775,6 +2802,7 @@ StyleAnimationValue::UncomputeValue(nsCSSProperty aProperty,
     case eUnit_Shadow:
     case eUnit_Filter:
     case eUnit_BackgroundPosition:
+    case eUnit_MaskPosition:
       aSpecifiedValue.
         SetDependentListValue(aComputedValue.GetCSSValueListValue());
       break;
@@ -2919,7 +2947,7 @@ StyleCoordToCSSValue(const nsStyleCoord& aCoord, nsCSSValue& aCSSValue)
 }
 
 static void
-SetPositionValue(const nsStyleBackground::Position& aPos, nsCSSValue& aCSSValue)
+SetPositionValue(const nsStyleLayers::Position& aPos, nsCSSValue& aCSSValue)
 {
   RefPtr<nsCSSValue::Array> posArray = nsCSSValue::Array::Create(4);
   aCSSValue.SetArrayValue(posArray.get(), eCSSUnit_Array);
@@ -2976,6 +3004,78 @@ SubstitutePixelValues(nsStyleContext* aStyleContext,
   } else {
     aOutput = aInput;
   }
+}
+
+static void
+ExtractLayerSize(const nsStyleLayers &layers,
+                 StyleAnimationValue& aComputedValue)
+{
+  nsAutoPtr<nsCSSValuePairList> result;
+  nsCSSValuePairList **resultTail = getter_Transfers(result);
+  MOZ_ASSERT(layers.mSizeCount > 0, "unexpected count");
+  for (uint32_t i = 0, i_end = layers.mSizeCount; i != i_end; ++i) {
+    nsCSSValuePairList *item = new nsCSSValuePairList;
+    *resultTail = item;
+    resultTail = &item->mNext;
+
+    const nsStyleLayers::Size &size = layers.mLayers[i].mSize;
+    switch (size.mWidthType) {
+      case nsStyleLayers::Size::eContain:
+      case nsStyleLayers::Size::eCover:
+        item->mXValue.SetIntValue(size.mWidthType,
+                                  eCSSUnit_Enumerated);
+        break;
+      case nsStyleLayers::Size::eAuto:
+        item->mXValue.SetAutoValue();
+        break;
+      case nsStyleLayers::Size::eLengthPercentage:
+        // XXXbz is there a good reason we can't just
+        // SetCalcValue(&size.mWidth, item->mXValue) here?
+        if (!size.mWidth.mHasPercent &&
+            // negative values must have come from calc()
+            size.mWidth.mLength >= 0) {
+          MOZ_ASSERT(size.mWidth.mPercent == 0.0f,
+                     "Shouldn't have mPercent");
+          nscoordToCSSValue(size.mWidth.mLength, item->mXValue);
+        } else if (size.mWidth.mLength == 0 &&
+                   // negative values must have come from calc()
+                   size.mWidth.mPercent >= 0.0f) {
+          item->mXValue.SetPercentValue(size.mWidth.mPercent);
+        } else {
+          SetCalcValue(&size.mWidth, item->mXValue);
+        }
+        break;
+    }
+
+    switch (size.mHeightType) {
+      case nsStyleLayers::Size::eContain:
+      case nsStyleLayers::Size::eCover:
+        // leave it null
+        break;
+      case nsStyleLayers::Size::eAuto:
+        item->mYValue.SetAutoValue();
+        break;
+      case nsStyleLayers::Size::eLengthPercentage:
+        // XXXbz is there a good reason we can't just
+        // SetCalcValue(&size.mHeight, item->mYValue) here?
+        if (!size.mHeight.mHasPercent &&
+            // negative values must have come from calc()
+            size.mHeight.mLength >= 0) {
+          MOZ_ASSERT(size.mHeight.mPercent == 0.0f,
+                     "Shouldn't have mPercent");
+          nscoordToCSSValue(size.mHeight.mLength, item->mYValue);
+        } else if (size.mHeight.mLength == 0 &&
+                   // negative values must have come from calc()
+                   size.mHeight.mPercent >= 0.0f) {
+          item->mYValue.SetPercentValue(size.mHeight.mPercent);
+        } else {
+          SetCalcValue(&size.mHeight, item->mYValue);
+        }
+        break;
+    }
+  }
+
+  aComputedValue.SetAndAdoptCSSValuePairListValue(result.forget());
 }
 
 bool
@@ -3276,95 +3376,51 @@ StyleAnimationValue::ExtractComputedValue(nsCSSProperty aProperty,
         }
 
         case eCSSProperty_background_position: {
-          const nsStyleBackground *bg =
-            static_cast<const nsStyleBackground*>(styleStruct);
+          const nsStyleLayers &layers =
+            static_cast<const nsStyleBackground*>(styleStruct)->mLayers;
           nsAutoPtr<nsCSSValueList> result;
           nsCSSValueList **resultTail = getter_Transfers(result);
-          MOZ_ASSERT(bg->mPositionCount > 0, "unexpected count");
-          for (uint32_t i = 0, i_end = bg->mPositionCount; i != i_end; ++i) {
+          MOZ_ASSERT(layers.mPositionCount > 0, "unexpected count");
+          for (uint32_t i = 0, i_end = layers.mPositionCount; i != i_end; ++i) {
             nsCSSValueList *item = new nsCSSValueList;
             *resultTail = item;
             resultTail = &item->mNext;
-            SetPositionValue(bg->mLayers[i].mPosition, item->mValue);
+            SetPositionValue(layers.mLayers[i].mPosition, item->mValue);
           }
 
           aComputedValue.SetAndAdoptCSSValueListValue(result.forget(),
                                                       eUnit_BackgroundPosition);
           break;
         }
-
-        case eCSSProperty_background_size: {
-          const nsStyleBackground *bg =
-            static_cast<const nsStyleBackground*>(styleStruct);
-          nsAutoPtr<nsCSSValuePairList> result;
-          nsCSSValuePairList **resultTail = getter_Transfers(result);
-          MOZ_ASSERT(bg->mSizeCount > 0, "unexpected count");
-          for (uint32_t i = 0, i_end = bg->mSizeCount; i != i_end; ++i) {
-            nsCSSValuePairList *item = new nsCSSValuePairList;
+        case eCSSProperty_mask_position: {
+          const nsStyleLayers &layers =
+            static_cast<const nsStyleBackground*>(styleStruct)->mLayers;
+          nsAutoPtr<nsCSSValueList> result;
+          nsCSSValueList **resultTail = getter_Transfers(result);
+          MOZ_ASSERT(layers.mPositionCount > 0, "unexpected count");
+          for (uint32_t i = 0, i_end = layers.mPositionCount; i != i_end; ++i) {
+            nsCSSValueList *item = new nsCSSValueList;
             *resultTail = item;
             resultTail = &item->mNext;
-
-            const nsStyleBackground::Size &size = bg->mLayers[i].mSize;
-            switch (size.mWidthType) {
-              case nsStyleBackground::Size::eContain:
-              case nsStyleBackground::Size::eCover:
-                item->mXValue.SetIntValue(size.mWidthType,
-                                          eCSSUnit_Enumerated);
-                break;
-              case nsStyleBackground::Size::eAuto:
-                item->mXValue.SetAutoValue();
-                break;
-              case nsStyleBackground::Size::eLengthPercentage:
-                // XXXbz is there a good reason we can't just
-                // SetCalcValue(&size.mWidth, item->mXValue) here?
-                if (!size.mWidth.mHasPercent &&
-                    // negative values must have come from calc()
-                    size.mWidth.mLength >= 0) {
-                  MOZ_ASSERT(size.mWidth.mPercent == 0.0f,
-                             "Shouldn't have mPercent");
-                  nscoordToCSSValue(size.mWidth.mLength, item->mXValue);
-                } else if (size.mWidth.mLength == 0 &&
-                           // negative values must have come from calc()
-                           size.mWidth.mPercent >= 0.0f) {
-                  item->mXValue.SetPercentValue(size.mWidth.mPercent);
-                } else {
-                  SetCalcValue(&size.mWidth, item->mXValue);
-                }
-                break;
-            }
-
-            switch (size.mHeightType) {
-              case nsStyleBackground::Size::eContain:
-              case nsStyleBackground::Size::eCover:
-                // leave it null
-                break;
-              case nsStyleBackground::Size::eAuto:
-                item->mYValue.SetAutoValue();
-                break;
-              case nsStyleBackground::Size::eLengthPercentage:
-                // XXXbz is there a good reason we can't just
-                // SetCalcValue(&size.mHeight, item->mYValue) here?
-                if (!size.mHeight.mHasPercent &&
-                    // negative values must have come from calc()
-                    size.mHeight.mLength >= 0) {
-                  MOZ_ASSERT(size.mHeight.mPercent == 0.0f,
-                             "Shouldn't have mPercent");
-                  nscoordToCSSValue(size.mHeight.mLength, item->mYValue);
-                } else if (size.mHeight.mLength == 0 &&
-                           // negative values must have come from calc()
-                           size.mHeight.mPercent >= 0.0f) {
-                  item->mYValue.SetPercentValue(size.mHeight.mPercent);
-                } else {
-                  SetCalcValue(&size.mHeight, item->mYValue);
-                }
-                break;
-            }
+            SetPositionValue(layers.mLayers[i].mPosition, item->mValue);
           }
 
-          aComputedValue.SetAndAdoptCSSValuePairListValue(result.forget());
+          aComputedValue.SetAndAdoptCSSValueListValue(result.forget(),
+                                                      eUnit_MaskPosition);
           break;
         }
-
+        case eCSSProperty_background_size: {
+          const nsStyleLayers &layers =
+            static_cast<const nsStyleBackground*>(styleStruct)->mLayers;
+          ExtractLayerSize(layers, aComputedValue);
+          break;
+        }
+        case eCSSProperty_mask_size: {
+          const nsStyleLayers &layers =
+            static_cast<const nsStyleSVGReset*>(styleStruct)->mLayers;
+          ExtractLayerSize(layers, aComputedValue);
+          break;
+        }
         case eCSSProperty_filter: {
           const nsStyleSVGReset *svgReset =
             static_cast<const nsStyleSVGReset*>(styleStruct);
@@ -3722,6 +3778,7 @@ StyleAnimationValue::operator=(const StyleAnimationValue& aOther)
     case eUnit_Shadow:
     case eUnit_Filter:
     case eUnit_BackgroundPosition:
+    case eUnit_MaskPosition:
       MOZ_ASSERT(mUnit == eUnit_Shadow || mUnit == eUnit_Filter ||
                  aOther.mValue.mCSSValueList,
                  "value lists other than shadows and filters may not be null");
@@ -3959,6 +4016,7 @@ StyleAnimationValue::operator==(const StyleAnimationValue& aOther) const
     case eUnit_Shadow:
     case eUnit_Filter:
     case eUnit_BackgroundPosition:
+    case eUnit_MaskPosition:
       return nsCSSValueList::Equal(mValue.mCSSValueList,
                                    aOther.mValue.mCSSValueList);
     case eUnit_Transform:

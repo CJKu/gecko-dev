@@ -252,6 +252,7 @@ public:
     eUnit_Filter, // nsCSSValueList* (may be null)
     eUnit_Transform, // nsCSSValueList* (never null)
     eUnit_BackgroundPosition, // nsCSSValueList* (never null)
+    eUnit_MaskPosition, // nsCSSValueList* (never null)
     eUnit_CSSValuePairList, // nsCSSValuePairList* (never null)
     eUnit_UnparsedString // nsStringBuffer* (never null)
   };
@@ -429,7 +430,8 @@ private:
   static bool IsCSSValueListUnit(Unit aUnit) {
     return aUnit == eUnit_Dasharray || aUnit == eUnit_Filter ||
            aUnit == eUnit_Shadow ||
-           aUnit == eUnit_BackgroundPosition;
+           aUnit == eUnit_BackgroundPosition ||
+           aUnit == eUnit_MaskPosition;
   }
   static bool IsCSSValueSharedListValue(Unit aUnit) {
     return aUnit == eUnit_Transform;
