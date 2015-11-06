@@ -6028,8 +6028,10 @@ nsDisplaySVGEffects::PaintAsLayer(nsDisplayListBuilder* aBuilder,
                                   nsRenderingContext* aCtx,
                                   LayerManager* aManager)
 {
+  nsRect borderArea = nsRect(ToReferenceFrame(), mFrame->GetSize());
   nsSVGIntegrationUtils::PaintFramesWithEffects(*aCtx->ThebesContext(), mFrame,
                                                 mVisibleRect,
+                                                borderArea,
                                                 aBuilder, aManager);
 }
 

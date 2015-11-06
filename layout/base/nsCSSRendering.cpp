@@ -2846,15 +2846,16 @@ nsCSSRendering::PaintGradient(nsPresContext* aPresContext,
 
 DrawResult
 nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
-                                      nsRenderingContext& aRenderingContext,
-                                      nsIFrame* aForFrame,
-                                      const nsRect& aDirtyRect,
-                                      const nsRect& aBorderArea,
-                                      nsStyleContext* aBackgroundSC,
-                                      const nsStyleBorder& aBorder,
-                                      uint32_t aFlags,
-                                      nsRect* aBGClipRect,
-                                      int32_t aLayer)
+                                  nsRenderingContext& aRenderingContext,
+                                  nsIFrame* aForFrame,
+                                  const nsRect& aDirtyRect,
+                                  const nsRect& aBorderArea,
+                                  nsStyleContext* aBackgroundSC,
+                                  const nsStyleBorder& aBorder,
+                                  uint32_t aFlags,
+                                  nsRect* aBGClipRect,
+                                  int32_t aLayer,
+                                  bool aMask)
 {
   NS_PRECONDITION(aForFrame,
                   "Frame is expected to be provided to PaintBackground");
@@ -2900,10 +2901,12 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
                                              drawBackgroundImage,
                                              drawBackgroundColor);
 
-  const nsStyleImageLayers& layers = aBackgroundSC->StyleBackground()->mLayers;
+  const nsStyleImageLayers& layers = aMask ?
+    aBackgroundSC->StyleSVGReset()->mLayers :
+    aBackgroundSC->StyleBackground()->mLayers;
   // If we're drawing a specific layer, we don't want to draw the
   // background color.
-  if (drawBackgroundColor && aLayer >= 0) {
+  if ((drawBackgroundColor && aLayer >= 0) || aMask) {
     drawBackgroundColor = false;
   }
 
@@ -3027,7 +3030,7 @@ nsCSSRendering::PaintBackgroundWithSC(nsPresContext* aPresContext,
       if ((aLayer < 0 || i == (uint32_t)startLayer) &&
           !clipState.mDirtyRectGfx.IsEmpty()) {
         nsBackgroundLayerState state = PrepareImageLayer(aPresContext, aForFrame,
-            aFlags, paintBorderArea, clipState.mBGClipArea, layer);
+            aFlags, paintBorderArea, clipState.mBGClipArea, layer, aMask);
         result &= state.mImageRenderer.PrepareResult();
         if (!state.mFillArea.IsEmpty()) {
           if (state.mCompositionOp != CompositionOp::OP_OVER) {
@@ -3209,7 +3212,8 @@ nsCSSRendering::PrepareImageLayer(nsPresContext* aPresContext,
                                   uint32_t aFlags,
                                   const nsRect& aBorderArea,
                                   const nsRect& aBGClipRect,
-                                  const nsStyleImageLayers::Layer& aLayer)
+                                  const nsStyleImageLayers::Layer& aLayer,
+                                  bool aMask)
 {
   /*
    * The properties we need to keep in mind when drawing style
@@ -3355,7 +3359,8 @@ nsCSSRendering::PrepareImageLayer(nsPresContext* aPresContext,
   }
   state.mFillArea.IntersectRect(state.mFillArea, bgClipRect);
 
-  state.mCompositionOp = GetGFXBlendMode(aLayer.mBlendMode);
+  state.mCompositionOp = aMask ? GetGFXCompositeMode(aLayer.mComposite) :
+                                 GetGFXBlendMode(aLayer.mBlendMode);
 
   return state;
 }
