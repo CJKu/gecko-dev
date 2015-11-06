@@ -543,7 +543,8 @@ struct nsCSSRendering {
                     uint32_t aFlags,
                     const nsRect& aBorderArea,
                     const nsRect& aBGClipRect,
-                    const nsStyleImageLayers::Layer& aLayer);
+                    const nsStyleImageLayers::Layer& aLayer,
+                    bool aMask = false);
 
   struct ImageLayerClipState {
     nsRect mBGClipArea;  // Affected by mClippedRadii
@@ -615,7 +616,8 @@ struct nsCSSRendering {
                                           const nsStyleBorder& aBorder,
                                           uint32_t aFlags,
                                           nsRect* aBGClipRect = nullptr,
-                                          int32_t aLayer = -1);
+                                          int32_t aLayer = -1,
+                                          bool aMask = false);
 
   /**
    * Returns the rectangle covered by the given background layer image, taking
@@ -794,6 +796,18 @@ struct nsCSSRendering {
     }
   }
 
+  static CompositionOp GetGFXCompositeMode(uint8_t mBlendMode) {
+    switch (mBlendMode) {
+      case NS_STYLE_COMPOSITE_MODE_ADD:        return CompositionOp::OP_OVER;
+      case NS_STYLE_COMPOSITE_MODE_SUBSTRACT:  return CompositionOp::OP_OUT;
+      case NS_STYLE_COMPOSITE_MODE_INTERSECT:  return CompositionOp::OP_IN;
+      case NS_STYLE_COMPOSITE_MODE_EXCLUDE:    return CompositionOp::OP_XOR;
+      default:
+        MOZ_ASSERT(false); return CompositionOp::OP_OVER;
+    }
+
+    return CompositionOp::OP_OVER;
+  }
 protected:
   static gfxRect GetTextDecorationRectInternal(const Point& aPt,
                                                const Size& aLineSize,
