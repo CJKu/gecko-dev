@@ -1825,6 +1825,16 @@ nsComputedDOMStyle::DoGetBackgroundClip()
 }
 
 CSSValue*
+nsComputedDOMStyle::DoGetMaskClip()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mClip,
+                           &nsStyleImageLayers::mClipCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kLayerOriginKTable);
+}
+
+
+CSSValue*
 nsComputedDOMStyle::DoGetBackgroundColor()
 {
   nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
@@ -2135,6 +2145,23 @@ nsComputedDOMStyle::DoGetBackgroundImage()
 }
 
 CSSValue*
+nsComputedDOMStyle::DoGetMaskImage()
+{
+  const nsStyleSVGReset* svgReset = StyleSVGReset();
+
+  nsDOMCSSValueList *valueList = GetROCSSValueList(true);
+
+  for (uint32_t i = 0, i_end = svgReset->mLayers.mImageCount; i < i_end; ++i) {
+    nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
+    valueList->AppendCSSValue(val);
+
+    const nsStyleImage& image = svgReset->mLayers[i].mImage;
+    SetValueToStyleImage(image, val);
+  }
+
+  return valueList;
+}
+CSSValue*
 nsComputedDOMStyle::DoGetBackgroundBlendMode()
 {
   return GetBackgroundList(&nsStyleImageLayers::Layer::mBlendMode,
@@ -2144,12 +2171,39 @@ nsComputedDOMStyle::DoGetBackgroundBlendMode()
 }
 
 CSSValue*
+nsComputedDOMStyle::DoGetMaskMode()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mMaskMode,
+                           &nsStyleImageLayers::mMaskModeCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kLayerModeKTable);
+}
+
+CSSValue*
 nsComputedDOMStyle::DoGetBackgroundOrigin()
 {
   return GetBackgroundList(&nsStyleImageLayers::Layer::mOrigin,
                            &nsStyleImageLayers::mOriginCount,
                            StyleBackground()->mLayers,
                            nsCSSProps::kLayerOriginKTable);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskOrigin()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mOrigin,
+                           &nsStyleImageLayers::mOriginCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kLayerOriginKTable);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskComposite()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mComposite,
+                           &nsStyleImageLayers::mCompositeCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kLayerCompositeKTable);
 }
 
 void
@@ -2200,6 +2254,23 @@ nsComputedDOMStyle::DoGetBackgroundPosition()
 }
 
 CSSValue*
+nsComputedDOMStyle::DoGetMaskPosition()
+{
+  const nsStyleSVGReset* svgReset = StyleSVGReset();
+
+  nsDOMCSSValueList *valueList = GetROCSSValueList(true);
+
+  for (uint32_t i = 0, i_end = svgReset->mLayers.mPositionCount; i < i_end; ++i) {
+    nsDOMCSSValueList *itemList = GetROCSSValueList(false);
+    valueList->AppendCSSValue(itemList);
+
+    SetValueToPosition(svgReset->mLayers[i].mPosition, itemList);
+  }
+
+  return valueList;
+}
+
+CSSValue*
 nsComputedDOMStyle::DoGetBackgroundRepeat()
 {
   const nsStyleBackground* bg = StyleBackground();
@@ -2215,6 +2286,54 @@ nsComputedDOMStyle::DoGetBackgroundRepeat()
 
     const uint8_t& xRepeat = bg->mLayers.mLayers[i].mRepeat.mXRepeat;
     const uint8_t& yRepeat = bg->mLayers.mLayers[i].mRepeat.mYRepeat;
+
+    bool hasContraction = true;
+    unsigned contraction;
+    if (xRepeat == yRepeat) {
+      contraction = xRepeat;
+    } else if (xRepeat == NS_STYLE_IMAGELAYER_REPEAT_REPEAT &&
+               yRepeat == NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT) {
+      contraction = NS_STYLE_IMAGELAYER_REPEAT_REPEAT_X;
+    } else if (xRepeat == NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT &&
+               yRepeat == NS_STYLE_IMAGELAYER_REPEAT_REPEAT) {
+      contraction = NS_STYLE_IMAGELAYER_REPEAT_REPEAT_Y;
+    } else {
+      hasContraction = false;
+    }
+
+    if (hasContraction) {
+      valX->SetIdent(nsCSSProps::ValueToKeywordEnum(contraction,
+                                         nsCSSProps::kLayerRepeatKTable));
+    } else {
+      nsROCSSPrimitiveValue *valY = new nsROCSSPrimitiveValue;
+      itemList->AppendCSSValue(valY);
+
+      valX->SetIdent(nsCSSProps::ValueToKeywordEnum(xRepeat,
+                                          nsCSSProps::kLayerRepeatKTable));
+      valY->SetIdent(nsCSSProps::ValueToKeywordEnum(yRepeat,
+                                          nsCSSProps::kLayerRepeatKTable));
+    }
+  }
+
+  return valueList;
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskRepeat()
+{
+  const nsStyleSVGReset* svgReset = StyleSVGReset();
+
+  nsDOMCSSValueList *valueList = GetROCSSValueList(true);
+
+  for (uint32_t i = 0, i_end = svgReset->mLayers.mRepeatCount; i < i_end; ++i) {
+    nsDOMCSSValueList *itemList = GetROCSSValueList(false);
+    valueList->AppendCSSValue(itemList);
+
+    nsROCSSPrimitiveValue *valX = new nsROCSSPrimitiveValue;
+    itemList->AppendCSSValue(valX);
+
+    const uint8_t& xRepeat = svgReset->mLayers[i].mRepeat.mXRepeat;
+    const uint8_t& yRepeat = svgReset->mLayers[i].mRepeat.mYRepeat;
 
     bool hasContraction = true;
     unsigned contraction;
@@ -2329,6 +2448,86 @@ nsComputedDOMStyle::DoGetBackgroundSize()
   return valueList;
 }
 
+CSSValue*
+nsComputedDOMStyle::DoGetMaskSize()
+{
+  const nsStyleSVGReset* svgReset = StyleSVGReset();
+
+  nsDOMCSSValueList *valueList = GetROCSSValueList(true);
+
+  for (uint32_t i = 0, i_end = svgReset->mLayers.mSizeCount; i < i_end; ++i) {
+    const nsStyleImageLayers::Size &size = svgReset->mLayers[i].mSize;
+
+    switch (size.mWidthType) {
+      case nsStyleImageLayers::Size::eContain:
+      case nsStyleImageLayers::Size::eCover: {
+        MOZ_ASSERT(size.mWidthType == size.mHeightType,
+                   "unsynced types");
+        nsCSSKeyword keyword = size.mWidthType == nsStyleImageLayers::Size::eContain
+                             ? eCSSKeyword_contain
+                             : eCSSKeyword_cover;
+        nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
+        valueList->AppendCSSValue(val);
+        val->SetIdent(keyword);
+        break;
+      }
+      default: {
+        nsDOMCSSValueList *itemList = GetROCSSValueList(false);
+        valueList->AppendCSSValue(itemList);
+
+        nsROCSSPrimitiveValue* valX = new nsROCSSPrimitiveValue;
+        itemList->AppendCSSValue(valX);
+        nsROCSSPrimitiveValue* valY = new nsROCSSPrimitiveValue;
+        itemList->AppendCSSValue(valY);
+
+        if (size.mWidthType == nsStyleImageLayers::Size::eAuto) {
+          valX->SetIdent(eCSSKeyword_auto);
+        } else {
+          MOZ_ASSERT(size.mWidthType ==
+                       nsStyleImageLayers::Size::eLengthPercentage,
+                     "bad mWidthType");
+          if (!size.mWidth.mHasPercent &&
+              // negative values must have come from calc()
+              size.mWidth.mLength >= 0) {
+            MOZ_ASSERT(size.mWidth.mPercent == 0.0f,
+                       "Shouldn't have mPercent");
+            valX->SetAppUnits(size.mWidth.mLength);
+          } else if (size.mWidth.mLength == 0 &&
+                     // negative values must have come from calc()
+                     size.mWidth.mPercent >= 0.0f) {
+            valX->SetPercent(size.mWidth.mPercent);
+          } else {
+            SetValueToCalc(&size.mWidth, valX);
+          }
+        }
+
+        if (size.mHeightType == nsStyleImageLayers::Size::eAuto) {
+          valY->SetIdent(eCSSKeyword_auto);
+        } else {
+          MOZ_ASSERT(size.mHeightType ==
+                       nsStyleImageLayers::Size::eLengthPercentage,
+                     "bad mHeightType");
+          if (!size.mHeight.mHasPercent &&
+              // negative values must have come from calc()
+              size.mHeight.mLength >= 0) {
+            MOZ_ASSERT(size.mHeight.mPercent == 0.0f,
+                       "Shouldn't have mPercent");
+            valY->SetAppUnits(size.mHeight.mLength);
+          } else if (size.mHeight.mLength == 0 &&
+                     // negative values must have come from calc()
+                     size.mHeight.mPercent >= 0.0f) {
+            valY->SetPercent(size.mHeight.mPercent);
+          } else {
+            SetValueToCalc(&size.mHeight, valY);
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return valueList;
+}
 CSSValue*
 nsComputedDOMStyle::DoGetGridTemplateAreas()
 {
@@ -5720,21 +5919,6 @@ nsComputedDOMStyle::DoGetFilter()
     valueList->AppendCSSValue(value);
   }
   return valueList;
-}
-
-CSSValue*
-nsComputedDOMStyle::DoGetMask()
-{
-  nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
-
-  const nsStyleSVGReset* svg = StyleSVGReset();
-
-  if (svg->mMask)
-    val->SetURI(svg->mMask);
-  else
-    val->SetIdent(eCSSKeyword_none);
-
-  return val;
 }
 
 CSSValue*

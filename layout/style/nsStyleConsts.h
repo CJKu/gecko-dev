@@ -305,9 +305,9 @@ static inline mozilla::css::Side operator++(mozilla::css::Side& side, int) {
 #define NS_STYLE_IMAGELAYER_SIZE_COVER               1
 
 // See nsStyleLayers
-#define NS_STYLE_IMAGELAYER_MODE_ALPHA               0
-#define NS_STYLE_IMAGELAYER_MODE_LUMINANCE           1
-#define NS_STYLE_IMAGELAYER_MODE_AUTO                2
+#define NS_STYLE_MASK_MODE_ALPHA                0
+#define NS_STYLE_MASK_MODE_LUMINANCE            1
+#define NS_STYLE_MASK_MODE_AUTO                 2
 
 // See nsStyleBackground
 #define NS_STYLE_BG_INLINE_POLICY_EACH_BOX      0
@@ -1122,10 +1122,10 @@ static inline mozilla::css::Side operator++(mozilla::css::Side& side, int) {
 #define NS_STYLE_BLEND_LUMINOSITY                   15
 
 // composite
-#define NS_STYLE_COMPOSITE_ADD                      0
-#define NS_STYLE_COMPOSITE_SUBTRACT                 1
-#define NS_STYLE_COMPOSITE_INTERSECT                2
-#define NS_STYLE_COMPOSITE_EXCLUDE                  3
+#define NS_STYLE_COMPOSITE_MODE_ADD                 0
+#define NS_STYLE_COMPOSITE_MODE_SUBTRACT            1
+#define NS_STYLE_COMPOSITE_MODE_INTERSECT           2
+#define NS_STYLE_COMPOSITE_MODE_EXCLUDE             3
 
 // See nsStyleText::mControlCharacterVisibility
 #define NS_STYLE_CONTROL_CHARACTER_VISIBILITY_HIDDEN  0

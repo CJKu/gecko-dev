@@ -810,19 +810,20 @@ protected:
 #endif
 
   // Property specific parsing routines
-  bool ParseBackground();
+  template <typename T>
+  bool ParseImageLayers();
 
   struct ImageLayersShorthandParseState {
     nsCSSValue&  mColor;
     nsCSSValueList* mImage;
     nsCSSValuePairList* mRepeat;
-    nsCSSValueList* mAttachment;
+    nsCSSValueList* mAttachment;   // A property for background layer only
     nsCSSValueList* mClip;
     nsCSSValueList* mOrigin;
     nsCSSValueList* mPosition;
     nsCSSValuePairList* mSize;
-    nsCSSValueList* mComposite;
-    nsCSSValueList* mMode;
+    nsCSSValueList* mComposite;    // A property for mask layer only
+    nsCSSValueList* mMode;         // A property for mask layer only
     ImageLayersShorthandParseState(
         nsCSSValue& aColor, nsCSSValueList* aImage, nsCSSValuePairList* aRepeat,
         nsCSSValueList* aAttachment, nsCSSValueList* aClip,
@@ -836,7 +837,8 @@ protected:
   };
 
   bool IsFunctionTokenValidForStyleLayerImage(const nsCSSToken& aToken) const;
-  bool ParseBackgroundItem(ImageLayersShorthandParseState& aState);
+  template <typename T>
+  bool ParseImageLayersItem(ImageLayersShorthandParseState& aState);
 
   bool ParseValueList(nsCSSProperty aPropID); // a single value prop-id
   bool ParseLayerRepeat(nsCSSProperty aPropID);
@@ -10516,7 +10518,7 @@ CSSParserImpl::ParsePropertyByFunction(nsCSSProperty aPropID)
 {
   switch (aPropID) {  // handle shorthand or multiple properties
   case eCSSProperty_background:
-    return ParseBackground();
+    return ParseImageLayers<nsStyleBackground>();
   case eCSSProperty_background_repeat:
     return ParseLayerRepeat(eCSSProperty_background_repeat);
   case eCSSProperty_background_position:
@@ -10692,6 +10694,14 @@ CSSParserImpl::ParsePropertyByFunction(nsCSSProperty aPropID)
     return ParseClipPath();
   case eCSSProperty_scroll_snap_type:
     return ParseScrollSnapType();
+  case eCSSProperty_mask:
+    return ParseImageLayers<nsStyleSVGReset>();
+  case eCSSProperty_mask_repeat:
+    return ParseLayerRepeat(eCSSProperty_mask_repeat);
+  case eCSSProperty_mask_position:
+    return ParseLayerPosition(eCSSProperty_mask_position);
+  case eCSSProperty_mask_size:
+    return ParseLayerSize(eCSSProperty_mask_size);
   case eCSSProperty_all:
     return ParseAll();
   default:
@@ -10940,8 +10950,9 @@ BoxPositionMaskToCSSValue(int32_t aMask, bool isX)
   return nsCSSValue(val, eCSSUnit_Enumerated);
 }
 
+template <typename T>
 bool
-CSSParserImpl::ParseBackground()
+CSSParserImpl::ParseImageLayers()
 {
   nsAutoParseCompoundProperty compound(this);
 
@@ -10949,14 +10960,16 @@ CSSParserImpl::ParseBackground()
   nsCSSValue color;
 
   // Check first for inherit/initial/unset.
-  if (ParseSingleTokenVariant(color, VARIANT_INHERIT, nullptr)) {
-    // must be alone
-    for (const nsCSSProperty* subprops =
-           nsCSSProps::SubpropertyEntryFor(eCSSProperty_background);
-         *subprops != eCSSProperty_UNKNOWN; ++subprops) {
-      AppendValue(*subprops, color);
+  if (StyleLayerPropTrait<T>::color != eCSSProperty_UNKNOWN) {
+    if (ParseSingleTokenVariant(color, VARIANT_INHERIT, nullptr)) {
+      // must be alone
+      for (const nsCSSProperty* subprops =
+             nsCSSProps::SubpropertyEntryFor(StyleLayerPropTrait<T>::shortHand);
+           *subprops != eCSSProperty_UNKNOWN; ++subprops) {
+        AppendValue(*subprops, color);
+      }
+      return true;
     }
-    return true;
   }
 
   nsCSSValue image, repeat, attachment, clip, origin, position, size, composite, mode;
@@ -10968,51 +10981,69 @@ CSSParserImpl::ParseBackground()
                               mode.SetListValue());
 
   for (;;) {
-    if (!ParseBackgroundItem(state)) {
+    if (!ParseImageLayersItem<T>(state)) {
       return false;
     }
-    // If we saw a color, this must be the last item.
-    if (color.GetUnit() != eCSSUnit_Null) {
-      break;
+
+    if (StyleLayerPropTrait<T>::color != eCSSProperty_UNKNOWN) {
+      // If we saw a color, this must be the last item.
+      if (color.GetUnit() != eCSSUnit_Null) {
+        break;
+      }
     }
+
     // If there's a comma, expect another item.
     if (!ExpectSymbol(',', true)) {
       break;
     }
+
+#define APPENDNEXT(_propID, _prop, _propType) \
+  if (_propID != eCSSProperty_UNKNOWN) { \
+    _prop->mNext = new _propType; \
+    _prop = _prop->mNext; \
+  }
     // Chain another entry on all the lists.
-    state.mImage->mNext = new nsCSSValueList;
-    state.mImage = state.mImage->mNext;
-    state.mRepeat->mNext = new nsCSSValuePairList;
-    state.mRepeat = state.mRepeat->mNext;
-    state.mAttachment->mNext = new nsCSSValueList;
-    state.mAttachment = state.mAttachment->mNext;
-    state.mClip->mNext = new nsCSSValueList;
-    state.mClip = state.mClip->mNext;
-    state.mOrigin->mNext = new nsCSSValueList;
-    state.mOrigin = state.mOrigin->mNext;
-    state.mPosition->mNext = new nsCSSValueList;
-    state.mPosition = state.mPosition->mNext;
-    state.mSize->mNext = new nsCSSValuePairList;
-    state.mSize = state.mSize->mNext;
+    APPENDNEXT(StyleLayerPropTrait<T>::image, state.mImage, nsCSSValueList);
+    APPENDNEXT(StyleLayerPropTrait<T>::repeat, state.mRepeat, nsCSSValuePairList);
+    APPENDNEXT(StyleLayerPropTrait<T>::clip, state.mClip, nsCSSValueList);
+    APPENDNEXT(StyleLayerPropTrait<T>::origin, state.mOrigin, nsCSSValueList);
+    APPENDNEXT(StyleLayerPropTrait<T>::position, state.mPosition, nsCSSValueList);
+    APPENDNEXT(StyleLayerPropTrait<T>::size, state.mSize, nsCSSValuePairList);
+    APPENDNEXT(StyleLayerPropTrait<T>::attach, state.mAttachment, nsCSSValueList);
+    APPENDNEXT(StyleLayerPropTrait<T>::mode, state.mMode, nsCSSValueList);
+
+#undef APPENDNEXT
   }
 
   // If we get to this point without seeing a color, provide a default.
-  if (color.GetUnit() == eCSSUnit_Null) {
-    color.SetIntegerColorValue(NS_RGBA(0,0,0,0), eCSSUnit_RGBAColor);
+ if (StyleLayerPropTrait<T>::color != eCSSProperty_UNKNOWN) {
+    if (color.GetUnit() == eCSSUnit_Null) {
+      color.SetIntegerColorValue(NS_RGBA(0,0,0,0), eCSSUnit_RGBAColor);
+    }
   }
 
-  AppendValue(eCSSProperty_background_image,      image);
-  AppendValue(eCSSProperty_background_repeat,     repeat);
-  AppendValue(eCSSProperty_background_attachment, attachment);
-  AppendValue(eCSSProperty_background_clip,       clip);
-  AppendValue(eCSSProperty_background_origin,     origin);
-  AppendValue(eCSSProperty_background_position,   position);
-  AppendValue(eCSSProperty_background_size,       size);
-  AppendValue(eCSSProperty_background_color,      color);
+#define APPENDVALUE(_propID, _propValue) \
+  if (_propID != eCSSProperty_UNKNOWN) { \
+    AppendValue(_propID, _propValue); \
+  }
+
+  APPENDVALUE(StyleLayerPropTrait<T>::image,      image);
+  APPENDVALUE(StyleLayerPropTrait<T>::repeat,     repeat);
+  APPENDVALUE(StyleLayerPropTrait<T>::clip,       clip);
+  APPENDVALUE(StyleLayerPropTrait<T>::origin,     origin);
+  APPENDVALUE(StyleLayerPropTrait<T>::position,   position);
+  APPENDVALUE(StyleLayerPropTrait<T>::size,       size);
+  APPENDVALUE(StyleLayerPropTrait<T>::color,      color);
+  APPENDVALUE(StyleLayerPropTrait<T>::attach,     attachment);
+  APPENDVALUE(StyleLayerPropTrait<T>::mode,       mode);
+  APPENDVALUE(StyleLayerPropTrait<T>::composite,  composite);
+
+#undef APPENDVALUE
+
   return true;
 }
 
-// Helper for ParseBackgroundItem. Returns true if the passed-in nsCSSToken is
+// Helper for ParseImageLayersItem. Returns true if the passed-in nsCSSToken is
 // a function which is accepted for background-image.
 bool
 CSSParserImpl::IsFunctionTokenValidForStyleLayerImage(
@@ -11042,9 +11073,10 @@ CSSParserImpl::IsFunctionTokenValidForStyleLayerImage(
 }
 
 // Parse one item of the background shorthand property.
+template <typename T>
 bool
-CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState& aState)
-
+CSSParserImpl::ParseImageLayersItem(
+  CSSParserImpl::ImageLayersShorthandParseState& aState)
 {
   // Fill in the values that the shorthand will set if we don't find
   // other values.
@@ -11064,13 +11096,18 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
   positionArr->Item(3).SetPercentValue(0.0f);
   aState.mSize->mXValue.SetAutoValue();
   aState.mSize->mYValue.SetAutoValue();
-
+  aState.mComposite->mValue.SetIntValue(NS_STYLE_COMPOSITE_MODE_ADD,
+                                        eCSSUnit_Enumerated);
+  aState.mMode->mValue.SetIntValue(NS_STYLE_IMAGELAYER_MODE_AUTO,
+                                   eCSSUnit_Enumerated);
   bool haveColor = false,
        haveImage = false,
        haveRepeat = false,
        haveAttach = false,
        havePositionAndSize = false,
        haveOrigin = false,
+       haveComposite = false,
+       haveMode = false,
        haveSomething = false;
 
   while (GetToken(true)) {
@@ -11094,18 +11131,19 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
           return false;
         haveImage = true;
         if (ParseSingleValueProperty(aState.mImage->mValue,
-                                     eCSSProperty_background_image) !=
+                                     StyleLayerPropTrait<T>::image) !=
             CSSParseResult::Ok) {
           NS_NOTREACHED("should be able to parse");
           return false;
         }
-      } else if (nsCSSProps::FindKeyword(keyword,
+      } else if (StyleLayerPropTrait<T>::attach != eCSSProperty_UNKNOWN &&
+                 nsCSSProps::FindKeyword(keyword,
                    nsCSSProps::kLayerAttachmentKTable, dummy)) {
         if (haveAttach)
           return false;
         haveAttach = true;
         if (ParseSingleValueProperty(aState.mAttachment->mValue,
-                                     eCSSProperty_background_attachment) !=
+                                     StyleLayerPropTrait<T>::attach) !=
             CSSParseResult::Ok) {
           NS_NOTREACHED("should be able to parse");
           return false;
@@ -11144,7 +11182,7 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
           return false;
         haveOrigin = true;
         if (ParseSingleValueProperty(aState.mOrigin->mValue,
-                                     eCSSProperty_background_origin) !=
+                                     StyleLayerPropTrait<T>::origin) !=
             CSSParseResult::Ok) {
           NS_NOTREACHED("should be able to parse");
           return false;
@@ -11155,10 +11193,10 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
 
         // 'background-clip' and 'background-origin' use the same keyword table
         MOZ_ASSERT(nsCSSProps::kKeywordTableTable[
-                     eCSSProperty_background_origin] ==
+                     StyleLayerPropTrait<T>::origin] ==
                    nsCSSProps::kLayerOriginKTable);
         MOZ_ASSERT(nsCSSProps::kKeywordTableTable[
-                     eCSSProperty_background_clip] ==
+                     StyleLayerPropTrait<T>::clip] ==
                    nsCSSProps::kLayerOriginKTable);
         static_assert(NS_STYLE_IMAGELAYER_CLIP_BORDER ==
                       NS_STYLE_IMAGELAYER_ORIGIN_BORDER &&
@@ -11170,7 +11208,7 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
 
         CSSParseResult result =
           ParseSingleValueProperty(aState.mClip->mValue,
-                                   eCSSProperty_background_clip);
+                                   StyleLayerPropTrait<T>::clip);
         MOZ_ASSERT(result != CSSParseResult::Error,
                    "how can failing to parse a single background-clip value "
                    "consume tokens?");
@@ -11180,14 +11218,40 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
           // See assertions above showing these values are compatible.
           aState.mClip->mValue = aState.mOrigin->mValue;
         }
-      } else {
-        if (haveColor)
+      } else if (StyleLayerPropTrait<T>::composite != eCSSProperty_UNKNOWN &&
+                 nsCSSProps::FindKeyword(keyword,
+                   nsCSSProps::kLayerCompositeKTable, dummy)) {
+        if (haveComposite)
           return false;
-        haveColor = true;
-        if (ParseSingleValueProperty(aState.mColor,
-                                     eCSSProperty_background_color) !=
+        haveComposite = true;
+        if (ParseSingleValueProperty(aState.mComposite->mValue,
+                                     StyleLayerPropTrait<T>::composite) !=
             CSSParseResult::Ok) {
+          NS_NOTREACHED("should be able to parse");
           return false;
+        }
+      } else if (StyleLayerPropTrait<T>::mode!= eCSSProperty_UNKNOWN &&
+                 nsCSSProps::FindKeyword(keyword,
+                   nsCSSProps::kLayerModeKTable, dummy)) {
+        if (haveMode)
+          return false;
+        haveMode = true;
+        if (ParseSingleValueProperty(aState.mMode->mValue,
+                                     StyleLayerPropTrait<T>::mode) !=
+            CSSParseResult::Ok) {
+          NS_NOTREACHED("should be able to parse");
+          return false;
+        }
+      } else {
+        if (StyleLayerPropTrait<T>::color != eCSSProperty_UNKNOWN) {
+          if (haveColor)
+            return false;
+          haveColor = true;
+          if (ParseSingleValueProperty(aState.mColor,
+                                       StyleLayerPropTrait<T>::color) !=
+              CSSParseResult::Ok) {
+            return false;
+          }
         }
       }
     } else if (tt == eCSSToken_URL ||
@@ -11197,7 +11261,7 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
         return false;
       haveImage = true;
       if (ParseSingleValueProperty(aState.mImage->mValue,
-                                   eCSSProperty_background_image) !=
+                                   StyleLayerPropTrait<T>::image) !=
           CSSParseResult::Ok) {
         return false;
       }
@@ -11227,10 +11291,12 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
       haveColor = true;
       // Note: This parses 'inherit', 'initial' and 'unset', but
       // we've already checked for them, so it's ok.
-      if (ParseSingleValueProperty(aState.mColor,
-                                   eCSSProperty_background_color) !=
-          CSSParseResult::Ok) {
-        return false;
+      if (StyleLayerPropTrait<T>::color != eCSSProperty_UNKNOWN) {
+        if (ParseSingleValueProperty(aState.mColor,
+                                     StyleLayerPropTrait<T>::color) !=
+            CSSParseResult::Ok) {
+          return false;
+        }
       }
     }
     haveSomething = true;
@@ -11240,7 +11306,7 @@ CSSParserImpl::ParseBackgroundItem(CSSParserImpl::ImageLayersShorthandParseState
 }
 
 // This function is very similar to ParseScrollSnapCoordinate,
-// ParseLayerPosition, and ParseBackgroundSize.
+// ParseLayerPosition, and ParseImageLayersSize.
 bool
 CSSParserImpl::ParseValueList(nsCSSProperty aPropID)
 {
@@ -11316,8 +11382,8 @@ CSSParserImpl::ParseLayerRepeatValues(nsCSSValuePair& aValue)
   return false;
 }
 
-// This function is very similar to ParseScrollSnapCoordinate,
-// ParseBackgroundList, and ParseBackgroundSize.
+// This function is very similar to ParseScrollSnapCoordinate
+// and ParseImageLayersSize.
 bool
 CSSParserImpl::ParseLayerPosition(nsCSSProperty aPropID)
 {
@@ -11635,7 +11701,7 @@ CSSParserImpl::ParsePositionValue(nsCSSValue& aOut)
 }
 
 // This function is very similar to ParseScrollSnapCoordinate,
-// ParseBackgroundList, and ParseBackgroundPosition.
+// and ParseLayerPosition.
 bool
 CSSParserImpl::ParseLayerSize(nsCSSProperty aPropID)
 {

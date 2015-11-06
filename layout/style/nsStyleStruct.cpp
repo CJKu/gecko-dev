@@ -1277,16 +1277,16 @@ nsStyleFilter::SetDropShadow(nsCSSShadowArray* aDropShadow)
 //
 nsStyleSVGReset::nsStyleSVGReset()
 {
-    MOZ_COUNT_CTOR(nsStyleSVGReset);
-    mStopColor               = NS_RGB(0,0,0);
-    mFloodColor              = NS_RGB(0,0,0);
-    mLightingColor           = NS_RGB(255,255,255);
-    mMask                    = nullptr;
-    mStopOpacity             = 1.0f;
-    mFloodOpacity            = 1.0f;
-    mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
-    mVectorEffect            = NS_STYLE_VECTOR_EFFECT_NONE;
-    mMaskType                = NS_STYLE_MASK_TYPE_LUMINANCE;
+  MOZ_COUNT_CTOR(nsStyleSVGReset);
+  mStopColor               = NS_RGB(0,0,0);
+  mFloodColor              = NS_RGB(0,0,0);
+  mLightingColor           = NS_RGB(255,255,255);
+  mMask                    = nullptr;
+  mStopOpacity             = 1.0f;
+  mFloodOpacity            = 1.0f;
+  mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
+  mVectorEffect            = NS_STYLE_VECTOR_EFFECT_NONE;
+  mMaskType                = NS_STYLE_MASK_TYPE_LUMINANCE;
 }
 
 nsStyleSVGReset::~nsStyleSVGReset()
@@ -1295,6 +1295,7 @@ nsStyleSVGReset::~nsStyleSVGReset()
 }
 
 nsStyleSVGReset::nsStyleSVGReset(const nsStyleSVGReset& aSource)
+  : mLayers(aSource.mLayers)
 {
   MOZ_COUNT_CTOR(nsStyleSVGReset);
   mStopColor = aSource.mStopColor;
@@ -1347,6 +1348,46 @@ nsChangeHint nsStyleSVGReset::CalcDifference(const nsStyleSVGReset& aOther) cons
     NS_UpdateHint(hint, nsChangeHint_RepaintFrame);
   }
 
+  const nsStyleImageLayers& moreLayers =
+    mLayers.mImageCount > aOther.mLayers.mImageCount ?
+      this->mLayers : aOther.mLayers;
+  const nsStyleImageLayers& lessLayers =
+    mLayers.mImageCount > aOther.mLayers.mImageCount ?
+      aOther.mLayers : this->mLayers;
+
+  bool hasVisualDifference = false;
+
+  NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, moreLayers) {
+    if (i < lessLayers.mImageCount) {
+      if (moreLayers.mLayers[i] != lessLayers.mLayers[i]) {
+        if ((moreLayers.mLayers[i].mImage.GetType() == eStyleImageType_Element) ||
+            (lessLayers.mLayers[i].mImage.GetType() == eStyleImageType_Element))
+          return NS_CombineHint(nsChangeHint_UpdateEffects,
+                                nsChangeHint_RepaintFrame);
+        hasVisualDifference = true;
+      }
+    } else {
+      if (moreLayers.mLayers[i].mImage.GetType() == eStyleImageType_Element)
+        return NS_CombineHint(nsChangeHint_UpdateEffects,
+                              nsChangeHint_RepaintFrame);
+      hasVisualDifference = true;
+    }
+  }
+
+  if (mLayers.mClipCount != aOther.mLayers.mClipCount ||
+      mLayers.mOriginCount != aOther.mLayers.mOriginCount ||
+      mLayers.mRepeatCount != aOther.mLayers.mRepeatCount ||
+      mLayers.mPositionCount != aOther.mLayers.mPositionCount ||
+      mLayers.mSizeCount != aOther.mLayers.mSizeCount||
+      mLayers.mMaskModeCount != aOther.mLayers.mMaskModeCount||
+      mLayers.mCompositeCount != aOther.mLayers.mCompositeCount) {
+    NS_UpdateHint(hint, nsChangeHint_NeutralChange);
+  }
+
+  if (hasVisualDifference) {
+    NS_UpdateHint(hint, nsChangeHint_RepaintFrame);
+  }
+
   return hint;
 }
 
@@ -1368,7 +1409,7 @@ nsStyleSVGPaint::SetType(nsStyleSVGPaintType aType)
   mType = aType;
 }
 
-nsStyleSVGPaint& nsStyleSVGPaint::operator=(const nsStyleSVGPaint& aOther) 
+nsStyleSVGPaint& nsStyleSVGPaint::operator=(const nsStyleSVGPaint& aOther)
 {
   if (this == &aOther)
     return *this;
@@ -2315,7 +2356,9 @@ nsStyleImageLayers::nsStyleImageLayers()
   , mPositionCount(1)
   , mImageCount(0)
   , mSizeCount(1)
+  , mMaskModeCount(1)
   , mBlendModeCount(1)
+  , mCompositeCount(1)
 {
   mLayers.AppendElement();
   NS_ASSERTION(mLayers.Length() == 1, "auto array must have room for 1 element");
@@ -2329,7 +2372,9 @@ nsStyleImageLayers::nsStyleImageLayers(const nsStyleImageLayers &aSource)
   , mPositionCount(aSource.mPositionCount)
   , mImageCount(aSource.mImageCount)
   , mSizeCount(aSource.mSizeCount)
+  , mMaskModeCount(aSource.mMaskModeCount)
   , mBlendModeCount(aSource.mBlendModeCount)
+  , mCompositeCount(aSource.mCompositeCount)
   , mLayers(aSource.mLayers) // deep copy
 {
   // If the deep copy of mLayers failed, truncate the counts.
@@ -2343,7 +2388,9 @@ nsStyleImageLayers::nsStyleImageLayers(const nsStyleImageLayers &aSource)
     mPositionCount = std::max(mPositionCount, count);
     mImageCount = std::max(mImageCount, count);
     mSizeCount = std::max(mSizeCount, count);
+    mMaskModeCount = std::max(mMaskModeCount, count);
     mBlendModeCount = std::max(mBlendModeCount, count);
+    mCompositeCount = std::max(mCompositeCount, count);
   }
 }
 
@@ -2483,7 +2530,9 @@ nsStyleImageLayers::Layer::Layer()
 : mClip(NS_STYLE_IMAGELAYER_CLIP_BORDER),
   mOrigin(NS_STYLE_IMAGELAYER_ORIGIN_PADDING),
   mAttachment(NS_STYLE_IMAGELAYER_ATTACHMENT_SCROLL),
-  mBlendMode(NS_STYLE_BLEND_NORMAL)
+  mBlendMode(NS_STYLE_BLEND_NORMAL),
+  mComposite(NS_STYLE_COMPOSITE_MODE_ADD),
+  mMaskMode(NS_STYLE_IMAGELAYER_MODE_AUTO)
 {
   mPosition.SetInitialPercentValues(0.0f); // Initial value is "0% 0%"
   mImage.SetNull();
@@ -2517,7 +2566,9 @@ nsStyleImageLayers::Layer::operator==(const Layer& aOther) const
          mBlendMode == aOther.mBlendMode &&
          mPosition == aOther.mPosition &&
          mSize == aOther.mSize &&
-         mImage == aOther.mImage;
+         mImage == aOther.mImage &&
+         mMaskMode == aOther.mMaskMode &&
+         mComposite == aOther.mComposite;
 }
 
 nsChangeHint
@@ -2530,7 +2581,9 @@ nsStyleImageLayers::Layer::CalcDifference(const nsStyleImageLayers::Layer& aOthe
       mRepeat != aOther.mRepeat ||
       mBlendMode != aOther.mBlendMode ||
       mSize != aOther.mSize ||
-      mImage != aOther.mImage) {
+      mImage != aOther.mImage ||
+      mMaskMode != aOther.mMaskMode ||
+      mComposite != aOther.mComposite) {
     hint |= nsChangeHint_RepaintFrame;
   }
   if (mPosition != aOther.mPosition) {

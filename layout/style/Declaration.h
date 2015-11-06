@@ -349,6 +349,11 @@ private:
   void AppendVariableAndValueToString(const nsAString& aName,
                                       nsAString& aResult) const;
 
+  template <typename T>
+  void GetStyleLayerValue(nsCSSCompressedDataBlock *data,
+                          nsAString& aValue,
+                          nsCSSValue::Serialization aSerialization) const;
+
 public:
   /**
    * Returns the property at the given index in the ordered list of

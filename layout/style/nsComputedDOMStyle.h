@@ -280,6 +280,16 @@ private:
   mozilla::dom::CSSValue* DoGetBackgroundOrigin();
   mozilla::dom::CSSValue* DoGetBackgroundSize();
 
+  /* Mask properties */
+  mozilla::dom::CSSValue* DoGetMaskImage();
+  mozilla::dom::CSSValue* DoGetMaskPosition();
+  mozilla::dom::CSSValue* DoGetMaskRepeat();
+  mozilla::dom::CSSValue* DoGetMaskClip();
+  mozilla::dom::CSSValue* DoGetMaskOrigin();
+  mozilla::dom::CSSValue* DoGetMaskSize();
+  mozilla::dom::CSSValue* DoGetMaskMode();
+  mozilla::dom::CSSValue* DoGetMaskComposite();
+
   /* Padding properties */
   mozilla::dom::CSSValue* DoGetPaddingTop();
   mozilla::dom::CSSValue* DoGetPaddingBottom();
@@ -525,7 +535,6 @@ private:
 
   mozilla::dom::CSSValue* DoGetClipPath();
   mozilla::dom::CSSValue* DoGetFilter();
-  mozilla::dom::CSSValue* DoGetMask();
   mozilla::dom::CSSValue* DoGetMaskType();
   mozilla::dom::CSSValue* DoGetPaintOrder();
 

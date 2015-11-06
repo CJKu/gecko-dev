@@ -383,6 +383,40 @@ struct nsStyleColor {
   nscolor mColor;                 // [inherited]
 };
 
+template <typename T> struct StyleLayerPropTrait;
+
+struct nsStyleBackground;
+template <>
+struct StyleLayerPropTrait<nsStyleBackground> {
+  static const nsCSSProperty shortHand = eCSSProperty_background;
+  static const nsCSSProperty color     = eCSSProperty_background_color;
+  static const nsCSSProperty image     = eCSSProperty_background_image;
+  static const nsCSSProperty repeat    = eCSSProperty_background_repeat;
+  static const nsCSSProperty position  = eCSSProperty_background_position;
+  static const nsCSSProperty clip      = eCSSProperty_background_clip;
+  static const nsCSSProperty origin    = eCSSProperty_background_origin;
+  static const nsCSSProperty size      = eCSSProperty_background_size;
+  static const nsCSSProperty attach    = eCSSProperty_background_attachment;
+  static const nsCSSProperty mode      = eCSSProperty_UNKNOWN;
+  static const nsCSSProperty composite = eCSSProperty_UNKNOWN;
+};
+
+struct nsStyleSVGReset;
+template <>
+struct StyleLayerPropTrait<nsStyleSVGReset> {
+  static const nsCSSProperty shortHand = eCSSProperty_mask;
+  static const nsCSSProperty color     = eCSSProperty_UNKNOWN;
+  static const nsCSSProperty image     = eCSSProperty_mask_image;
+  static const nsCSSProperty repeat    = eCSSProperty_mask_repeat;
+  static const nsCSSProperty position  = eCSSProperty_mask_position;
+  static const nsCSSProperty clip      = eCSSProperty_mask_clip;
+  static const nsCSSProperty origin    = eCSSProperty_mask_origin;
+  static const nsCSSProperty size      = eCSSProperty_mask_size;
+  static const nsCSSProperty attach    = eCSSProperty_UNKNOWN;
+  static const nsCSSProperty mode      = eCSSProperty_mask_mode;
+  static const nsCSSProperty composite = eCSSProperty_mask_composite;
+};
+
 struct nsStyleImageLayers {
   nsStyleImageLayers();
   nsStyleImageLayers(const nsStyleImageLayers &aSource);
@@ -509,6 +543,10 @@ struct nsStyleImageLayers {
                                   // background layer property
     uint8_t       mBlendMode;     // [reset] See nsStyleConsts.h
                                   // background layer property
+    uint8_t       mComposite;     // [reset] See nsStyleConsts.h
+                                  // mask layer property
+    uint8_t       mMaskMode;      // [reset] See nsStyleConsts.h
+                                  // mask layer property
     Repeat        mRepeat;        // [reset] See nsStyleConsts.h
 
     // Initializes only mImage
@@ -553,7 +591,9 @@ struct nsStyleImageLayers {
            mPositionCount,
            mImageCount,
            mSizeCount,
-           mBlendModeCount;
+           mMaskModeCount,
+           mBlendModeCount,
+           mCompositeCount;
 
   // Layers are stored in an array, matching the top-to-bottom order in
   // which they are specified in CSS.  The number of layers to be used
@@ -3298,6 +3338,8 @@ struct nsStyleSVGReset {
       AllocateByObjectID(mozilla::eArenaObjectID_nsStyleSVGReset, sz);
   }
   void Destroy(nsPresContext* aContext) {
+    mLayers.UntrackImages(aContext);
+
     this->~nsStyleSVGReset();
     aContext->PresShell()->
       FreeByObjectID(mozilla::eArenaObjectID_nsStyleSVGReset, this);
@@ -3324,6 +3366,15 @@ struct nsStyleSVGReset {
     return mVectorEffect == NS_STYLE_VECTOR_EFFECT_NON_SCALING_STROKE;
   }
 
+  const nsAutoTArray<nsStyleImageLayers::Layer, 1>& Layers() const {
+    return mLayers.mLayers;
+  }
+
+  nsAutoTArray<nsStyleImageLayers::Layer, 1>& Layers()  {
+    return mLayers.mLayers;
+  }
+
+  nsStyleImageLayers    mLayers;
   nsStyleClipPath mClipPath;          // [reset]
   nsTArray<nsStyleFilter> mFilters;   // [reset]
   nsCOMPtr<nsIURI> mMask;             // [reset]

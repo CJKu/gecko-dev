@@ -642,6 +642,8 @@ public:
   static const KTableValue kLayerRepeatKTable[];
   static const KTableValue kLayerRepeatPartKTable[];
   static const KTableValue kLayerSizeKTable[];
+  static const KTableValue kLayerCompositeKTable[];
+  static const KTableValue kLayerModeKTable[];
   static const KTableValue kBlendModeKTable[];
   static const KTableValue kBorderCollapseKTable[];
   static const KTableValue kBorderColorKTable[];

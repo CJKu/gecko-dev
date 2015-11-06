@@ -912,6 +912,20 @@ const KTableValue nsCSSProps::kLayerSizeKTable[] = {
   eCSSKeyword_UNKNOWN,-1
 };
 
+const KTableValue nsCSSProps::kLayerModeKTable[] = {
+  eCSSKeyword_alpha, NS_STYLE_IMAGELAYER_MODE_ALPHA,
+  eCSSKeyword_luminance, NS_STYLE_IMAGELAYER_MODE_LUMINANCE,
+  eCSSKeyword_auto, NS_STYLE_IMAGELAYER_MODE_AUTO,
+  eCSSKeyword_UNKNOWN,-1
+};
+
+const KTableValue nsCSSProps::kLayerCompositeKTable[] = {
+  eCSSKeyword_subtract, NS_STYLE_COMPOSITE_MODE_SUBTRACT,
+  eCSSKeyword_intersect, NS_STYLE_COMPOSITE_MODE_INTERSECT,
+  eCSSKeyword_exclude, NS_STYLE_COMPOSITE_MODE_EXCLUDE,
+  eCSSKeyword_UNKNOWN,-1
+};
+
 const KTableValue nsCSSProps::kBlendModeKTable[] = {
     eCSSKeyword_normal,      NS_STYLE_BLEND_NORMAL,
     eCSSKeyword_multiply,    NS_STYLE_BLEND_MULTIPLY,
@@ -2779,6 +2793,18 @@ static const nsCSSProperty gMozTransformSubpropTable[] = {
 static const nsCSSProperty gScrollSnapTypeSubpropTable[] = {
   eCSSProperty_scroll_snap_type_x,
   eCSSProperty_scroll_snap_type_y,
+  eCSSProperty_UNKNOWN
+};
+
+static const nsCSSProperty gMaskSubpropTable[] = {
+  eCSSProperty_mask_image,
+  eCSSProperty_mask_repeat,
+  eCSSProperty_mask_position,
+  eCSSProperty_mask_clip,
+  eCSSProperty_mask_origin,
+  eCSSProperty_mask_size,
+  eCSSProperty_mask_composite,
+  eCSSProperty_mask_mode,
   eCSSProperty_UNKNOWN
 };
 
