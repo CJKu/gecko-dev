@@ -5941,11 +5941,26 @@ nsRuleNode::ComputeDisplayData(void* aStartStruct,
         nsCSSProperty prop =
           nsCSSProps::LookupProperty(buffer,
                                      nsCSSProps::eEnabledForAllContent);
-        if (prop != eCSSProperty_UNKNOWN &&
-            nsCSSProps::PropHasFlags(prop,
-                                     CSS_PROPERTY_CREATES_STACKING_CONTEXT))
-        {
-          display->mWillChangeBitField |= NS_STYLE_WILL_CHANGE_STACKING_CONTEXT;
+
+        if (prop != eCSSProperty_UNKNOWN) {
+          // If the property given is a shorthand, it indicates the expectation
+          // for all the longhands the shorthand expands to.
+          if (nsCSSProps::IsShorthand(prop)) {
+            for (const nsCSSProperty* shorthands =
+                   nsCSSProps::SubpropertyEntryFor(prop);
+                 *shorthands != eCSSProperty_UNKNOWN; ++shorthands) {
+              if (nsCSSProps::PropHasFlags(*shorthands,
+                                      CSS_PROPERTY_CREATES_STACKING_CONTEXT)) {
+                display->mWillChangeBitField |=
+                  NS_STYLE_WILL_CHANGE_STACKING_CONTEXT;
+                break;
+              }
+            }
+          } else if (nsCSSProps::PropHasFlags(prop,
+                                      CSS_PROPERTY_CREATES_STACKING_CONTEXT)) {
+            display->mWillChangeBitField |=
+              NS_STYLE_WILL_CHANGE_STACKING_CONTEXT;
+          }
         }
       }
     }
