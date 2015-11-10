@@ -1799,7 +1799,7 @@ nsComputedDOMStyle::GetBackgroundList(uint8_t nsStyleImageLayers::Layer::* aMemb
   for (uint32_t i = 0, i_end = aLayers.*aCount; i < i_end; ++i) {
     nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
     valueList->AppendCSSValue(val);
-    val->SetIdent(nsCSSProps::ValueToKeywordEnum(aLayers[i].*aMember,
+    val->SetIdent(nsCSSProps::ValueToKeywordEnum(aLayers.mLayers[i].*aMember,
                                                  aTable));
   }
 
@@ -1812,7 +1812,7 @@ nsComputedDOMStyle::DoGetBackgroundAttachment()
   return GetBackgroundList(&nsStyleImageLayers::Layer::mAttachment,
                            &nsStyleImageLayers::mAttachmentCount,
                            StyleBackground()->mLayers,
-                           nsCSSProps::kBackgroundAttachmentKTable);
+                           nsCSSProps::kLayerAttachmentKTable);
 }
 
 CSSValue*
@@ -1821,7 +1821,7 @@ nsComputedDOMStyle::DoGetBackgroundClip()
   return GetBackgroundList(&nsStyleImageLayers::Layer::mClip,
                            &nsStyleImageLayers::mClipCount,
                            StyleBackground()->mLayers,
-                           nsCSSProps::kBackgroundOriginKTable);
+                           nsCSSProps::kLayerOriginKTable);
 }
 
 CSSValue*
@@ -2127,7 +2127,7 @@ nsComputedDOMStyle::DoGetBackgroundImage()
     nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
     valueList->AppendCSSValue(val);
 
-    const nsStyleImage& image = bg->mLayers[i].mImage;
+    const nsStyleImage& image = bg->mLayers.mLayers[i].mImage;
     SetValueToStyleImage(image, val);
   }
 
@@ -2149,7 +2149,7 @@ nsComputedDOMStyle::DoGetBackgroundOrigin()
   return GetBackgroundList(&nsStyleImageLayers::Layer::mOrigin,
                            &nsStyleImageLayers::mOriginCount,
                            StyleBackground()->mLayers,
-                           nsCSSProps::kBackgroundOriginKTable);
+                           nsCSSProps::kLayerOriginKTable);
 }
 
 void
@@ -2193,7 +2193,7 @@ nsComputedDOMStyle::DoGetBackgroundPosition()
     nsDOMCSSValueList *itemList = GetROCSSValueList(false);
     valueList->AppendCSSValue(itemList);
 
-    SetValueToPosition(bg->mLayers[i].mPosition, itemList);
+    SetValueToPosition(bg->mLayers.mLayers[i].mPosition, itemList);
   }
 
   return valueList;
@@ -2213,39 +2213,40 @@ nsComputedDOMStyle::DoGetBackgroundRepeat()
     nsROCSSPrimitiveValue *valX = new nsROCSSPrimitiveValue;
     itemList->AppendCSSValue(valX);
 
-    const uint8_t& xRepeat = bg->mLayers[i].mRepeat.mXRepeat;
-    const uint8_t& yRepeat = bg->mLayers[i].mRepeat.mYRepeat;
+    const uint8_t& xRepeat = bg->mLayers.mLayers[i].mRepeat.mXRepeat;
+    const uint8_t& yRepeat = bg->mLayers.mLayers[i].mRepeat.mYRepeat;
 
     bool hasContraction = true;
     unsigned contraction;
     if (xRepeat == yRepeat) {
       contraction = xRepeat;
-    } else if (xRepeat == NS_STYLE_BG_REPEAT_REPEAT &&
-               yRepeat == NS_STYLE_BG_REPEAT_NO_REPEAT) {
-      contraction = NS_STYLE_BG_REPEAT_REPEAT_X;
-    } else if (xRepeat == NS_STYLE_BG_REPEAT_NO_REPEAT &&
-               yRepeat == NS_STYLE_BG_REPEAT_REPEAT) {
-      contraction = NS_STYLE_BG_REPEAT_REPEAT_Y;
+    } else if (xRepeat == NS_STYLE_IMAGELAYER_REPEAT_REPEAT &&
+               yRepeat == NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT) {
+      contraction = NS_STYLE_IMAGELAYER_REPEAT_REPEAT_X;
+    } else if (xRepeat == NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT &&
+               yRepeat == NS_STYLE_IMAGELAYER_REPEAT_REPEAT) {
+      contraction = NS_STYLE_IMAGELAYER_REPEAT_REPEAT_Y;
     } else {
       hasContraction = false;
     }
 
     if (hasContraction) {
       valX->SetIdent(nsCSSProps::ValueToKeywordEnum(contraction,
-                                         nsCSSProps::kBackgroundRepeatKTable));
+                                         nsCSSProps::kLayerRepeatKTable));
     } else {
       nsROCSSPrimitiveValue *valY = new nsROCSSPrimitiveValue;
       itemList->AppendCSSValue(valY);
       
       valX->SetIdent(nsCSSProps::ValueToKeywordEnum(xRepeat,
-                                          nsCSSProps::kBackgroundRepeatKTable));
+                                          nsCSSProps::kLayerRepeatKTable));
       valY->SetIdent(nsCSSProps::ValueToKeywordEnum(yRepeat,
-                                          nsCSSProps::kBackgroundRepeatKTable));
+                                          nsCSSProps::kLayerRepeatKTable));
     }
   }
 
   return valueList;
 }
+
 
 CSSValue*
 nsComputedDOMStyle::DoGetBackgroundSize()
@@ -2255,7 +2256,7 @@ nsComputedDOMStyle::DoGetBackgroundSize()
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
   for (uint32_t i = 0, i_end = bg->mLayers.mSizeCount; i < i_end; ++i) {
-    const nsStyleImageLayers::Size &size = bg->mLayers[i].mSize;
+    const nsStyleImageLayers::Size &size = bg->mLayers.mLayers[i].mSize;
 
     switch (size.mWidthType) {
       case nsStyleImageLayers::Size::eContain:

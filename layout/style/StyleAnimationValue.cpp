@@ -3285,7 +3285,7 @@ StyleAnimationValue::ExtractComputedValue(nsCSSProperty aProperty,
             nsCSSValueList *item = new nsCSSValueList;
             *resultTail = item;
             resultTail = &item->mNext;
-            SetPositionValue(bg->mLayers[i].mPosition, item->mValue);
+            SetPositionValue(bg->mLayers.mLayers[i].mPosition, item->mValue);
           }
 
           aComputedValue.SetAndAdoptCSSValueListValue(result.forget(),
@@ -3304,7 +3304,7 @@ StyleAnimationValue::ExtractComputedValue(nsCSSProperty aProperty,
             *resultTail = item;
             resultTail = &item->mNext;
 
-            const nsStyleImageLayers::Size &size = bg->mLayers[i].mSize;
+            const nsStyleImageLayers::Size &size = bg->mLayers.mLayers[i].mSize;
             switch (size.mWidthType) {
               case nsStyleImageLayers::Size::eContain:
               case nsStyleImageLayers::Size::eCover:

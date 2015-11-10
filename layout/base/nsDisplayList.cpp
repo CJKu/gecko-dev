@@ -2153,10 +2153,10 @@ nsDisplayBackgroundImage::GetDestAreaInternal(nsDisplayListBuilder* aBuilder)
   nsPresContext* presContext = mFrame->PresContext();
   uint32_t flags = aBuilder->GetBackgroundPaintFlags();
   nsRect borderArea = nsRect(ToReferenceFrame(), mFrame->GetSize());
-  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers[mLayer];
+  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers.mLayers[mLayer];
 
   nsBackgroundLayerState state =
-    nsCSSRendering::PrepareBackgroundLayer(presContext, mFrame, flags,
+    nsCSSRendering::PrepareImageLayer(presContext, mFrame, flags,
                                            borderArea, borderArea, layer);
   return state.mDestArea;
 }
@@ -2199,8 +2199,8 @@ SetBackgroundClipRegion(DisplayListClipState::AutoSaveRestore& aClipState,
 {
   nsRect borderBox = nsRect(aToReferenceFrame, aFrame->GetSize());
 
-  nsCSSRendering::BackgroundClipState clip;
-  nsCSSRendering::GetBackgroundClip(aLayer, aFrame, *aFrame->StyleBorder(),
+  nsCSSRendering::ImageLayersClipState clip;
+  nsCSSRendering::GetImageLayersClip(aLayer, aFrame, *aFrame->StyleBorder(),
                                     borderBox, borderBox, aWillPaintBorder,
                                     aFrame->PresContext()->AppUnitsPerDevPixel(),
                                     &clip);
@@ -2300,18 +2300,19 @@ nsDisplayBackgroundImage::AppendBackgroundItemsToTop(nsDisplayListBuilder* aBuil
 
   // Passing bg == nullptr in this macro will result in one iteration with
   // i = 0.
-  NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, bg->mLayers) {
-    if (bg->mLayers[i].mImage.IsEmpty()) {
+  const nsStyleImageLayers& layers = bg->mLayers;
+  NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, layers) {
+    if (layers.mLayers[i].mImage.IsEmpty()) {
       continue;
     }
 
-    if (bg->mLayers[i].mBlendMode != NS_STYLE_BLEND_NORMAL) {
+    if (layers.mLayers[i].mBlendMode != NS_STYLE_BLEND_NORMAL) {
       needBlendContainer = true;
     }
 
     DisplayListClipState::AutoSaveRestore clipState(aBuilder);
     if (!aBuilder->IsForEventDelivery()) {
-      const nsStyleImageLayers::Layer& layer = bg->mLayers[i];
+      const nsStyleImageLayers::Layer& layer = layers.mLayers[i];
       SetBackgroundClipRegion(clipState, aFrame, toRef,
                               layer, willPaintBorder);
     }
@@ -2375,13 +2376,13 @@ nsDisplayBackgroundImage::IsSingleFixedPositionImage(nsDisplayListBuilder* aBuil
   nsPresContext* presContext = mFrame->PresContext();
   uint32_t flags = aBuilder->GetBackgroundPaintFlags();
   nsRect borderArea = nsRect(ToReferenceFrame(), mFrame->GetSize());
-  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers[mLayer];
+  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers.mLayers[mLayer];
 
-  if (layer.mAttachment != NS_STYLE_BG_ATTACHMENT_FIXED)
+  if (layer.mAttachment != NS_STYLE_IMAGELAYER_ATTACHMENT_FIXED)
     return false;
 
   nsBackgroundLayerState state =
-    nsCSSRendering::PrepareBackgroundLayer(presContext, mFrame, flags,
+    nsCSSRendering::PrepareImageLayer(presContext, mFrame, flags,
                                            borderArea, aClipRect, layer);
   nsImageRenderer* imageRenderer = &state.mImageRenderer;
   // We only care about images here, not gradients.
@@ -2397,8 +2398,8 @@ nsDisplayBackgroundImage::IsSingleFixedPositionImage(nsDisplayListBuilder* aBuil
 bool
 nsDisplayBackgroundImage::IsNonEmptyFixedImage() const
 {
-  return mBackgroundStyle->mLayers[mLayer].mAttachment == NS_STYLE_BG_ATTACHMENT_FIXED &&
-         !mBackgroundStyle->mLayers[mLayer].mImage.IsEmpty();
+  return mBackgroundStyle->mLayers.mLayers[mLayer].mAttachment == NS_STYLE_IMAGELAYER_ATTACHMENT_FIXED &&
+         !mBackgroundStyle->mLayers.mLayers[mLayer].mImage.IsEmpty();
 }
 
 bool
@@ -2427,10 +2428,10 @@ nsDisplayBackgroundImage::CanOptimizeToImageLayer(LayerManager* aManager,
   nsPresContext* presContext = mFrame->PresContext();
   uint32_t flags = aBuilder->GetBackgroundPaintFlags();
   nsRect borderArea = nsRect(ToReferenceFrame(), mFrame->GetSize());
-  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers[mLayer];
+  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers.mLayers[mLayer];
 
   nsBackgroundLayerState state =
-    nsCSSRendering::PrepareBackgroundLayer(presContext, mFrame, flags,
+    nsCSSRendering::PrepareImageLayer(presContext, mFrame, flags,
                                            borderArea, borderArea, layer);
   nsImageRenderer* imageRenderer = &state.mImageRenderer;
   // We only care about images here, not gradients.
@@ -2497,7 +2498,7 @@ nsDisplayBackgroundImage::ShouldCreateOwnLayer(nsDisplayListBuilder* aBuilder,
   }
 
   if (nsLayoutUtils::AnimatedImageLayersEnabled() && mBackgroundStyle) {
-    const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers[mLayer];
+    const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers.mLayers[mLayer];
     const nsStyleImage* image = &layer.mImage;
     if (image->GetType() == eStyleImageType_Image) {
       imgIRequest* imgreq = image->GetImageData();
@@ -2657,13 +2658,13 @@ nsDisplayBackgroundImage::GetInsideClipRegion(nsDisplayItem* aItem,
     clipRect = canvasFrame->CanvasArea() + aItem->ToReferenceFrame();
   } else {
     switch (aClip) {
-    case NS_STYLE_BG_CLIP_BORDER:
+    case NS_STYLE_IMAGELAYER_CLIP_BORDER:
       clipRect = nsRect(aItem->ToReferenceFrame(), frame->GetSize());
       break;
-    case NS_STYLE_BG_CLIP_PADDING:
+    case NS_STYLE_IMAGELAYER_CLIP_PADDING:
       clipRect = frame->GetPaddingRect() - frame->GetPosition() + aItem->ToReferenceFrame();
       break;
-    case NS_STYLE_BG_CLIP_CONTENT:
+    case NS_STYLE_IMAGELAYER_CLIP_CONTENT:
       clipRect = frame->GetContentRectRelativeToSelf() + aItem->ToReferenceFrame();
       break;
     default:
@@ -2695,7 +2696,7 @@ nsDisplayBackgroundImage::GetOpaqueRegion(nsDisplayListBuilder* aBuilder,
   if (mFrame->StyleBorder()->mBoxDecorationBreak ==
         NS_STYLE_BOX_DECORATION_BREAK_CLONE ||
       (!mFrame->GetPrevContinuation() && !mFrame->GetNextContinuation())) {
-    const nsStyleImageLayers::Layer& layer = mBackgroundStyle->mLayers[mLayer];
+    const nsStyleImageLayers::Layer& layer = mBackgroundStyle->mLayers.mLayers[mLayer];
     if (layer.mImage.IsOpaque() && layer.mBlendMode == NS_STYLE_BLEND_NORMAL) {
       nsPresContext* presContext = mFrame->PresContext();
       result = GetInsideClipRegion(this, presContext, layer.mClip, mBounds, aSnap);
@@ -2721,10 +2722,10 @@ nsDisplayBackgroundImage::GetPositioningArea()
     return nsRect();
   }
   nsIFrame* attachedToFrame;
-  return nsCSSRendering::ComputeBackgroundPositioningArea(
+  return nsCSSRendering::ComputeImageLayerPositioningArea(
       mFrame->PresContext(), mFrame,
       nsRect(ToReferenceFrame(), mFrame->GetSize()),
-      mBackgroundStyle->mLayers[mLayer],
+      mBackgroundStyle->mLayers.mLayers[mLayer],
       &attachedToFrame) + ToReferenceFrame();
 }
 
@@ -2741,7 +2742,7 @@ nsDisplayBackgroundImage::RenderingMightDependOnPositioningAreaSizeChange()
     return true;
   }
 
-  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers[mLayer];
+  const nsStyleImageLayers::Layer &layer = mBackgroundStyle->mLayers.mLayers[mLayer];
   if (layer.RenderingMightDependOnPositioningAreaSizeChange()) {
     return true;
   }
@@ -2817,7 +2818,7 @@ void nsDisplayBackgroundImage::ComputeInvalidationRegion(nsDisplayListBuilder* a
     return;
   }
   if (aBuilder->ShouldSyncDecodeImages()) {
-    const nsStyleImage& image = mBackgroundStyle->mLayers[mLayer].mImage;
+    const nsStyleImage& image = mBackgroundStyle->mLayers.mLayers[mLayer].mImage;
     if (image.GetType() == eStyleImageType_Image &&
         geometry->ShouldInvalidateToSyncDecodeImages()) {
       aInvalidRegion->Or(*aInvalidRegion, bounds);
@@ -2863,7 +2864,7 @@ nsDisplayBackgroundImage::GetBoundsInternal(nsDisplayListBuilder* aBuilder) {
       clipRect = rootRect + aBuilder->ToReferenceFrame(mFrame);
     }
   }
-  const nsStyleImageLayers::Layer& layer = mBackgroundStyle->mLayers[mLayer];
+  const nsStyleImageLayers::Layer& layer = mBackgroundStyle->mLayers.mLayers[mLayer];
   return nsCSSRendering::GetBackgroundLayerRect(presContext, mFrame,
                                                 borderBox, clipRect, layer,
                                                 aBuilder->GetBackgroundPaintFlags());
