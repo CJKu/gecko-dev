@@ -821,23 +821,27 @@ protected:
     nsCSSValueList* mOrigin;
     nsCSSValueList* mPosition;
     nsCSSValuePairList* mSize;
+    nsCSSValueList* mComposite;
+    nsCSSValueList* mMode;
     BackgroundParseState(
         nsCSSValue& aColor, nsCSSValueList* aImage, nsCSSValuePairList* aRepeat,
         nsCSSValueList* aAttachment, nsCSSValueList* aClip,
         nsCSSValueList* aOrigin, nsCSSValueList* aPosition,
-        nsCSSValuePairList* aSize) :
+        nsCSSValuePairList* aSize, nsCSSValueList* aComposite,
+        nsCSSValueList* aMode) :
         mColor(aColor), mImage(aImage), mRepeat(aRepeat),
         mAttachment(aAttachment), mClip(aClip), mOrigin(aOrigin),
-        mPosition(aPosition), mSize(aSize) {};
+        mPosition(aPosition), mSize(aSize), mComposite(aComposite),
+        mMode(aMode) {};
   };
 
   bool IsFunctionTokenValidForBackgroundImage(const nsCSSToken& aToken) const;
   bool ParseBackgroundItem(BackgroundParseState& aState);
 
   bool ParseValueList(nsCSSProperty aPropID); // a single value prop-id
-  bool ParseBackgroundRepeat();
+  bool ParseBackgroundRepeat(nsCSSProperty aPropID);
   bool ParseBackgroundRepeatValues(nsCSSValuePair& aValue);
-  bool ParseBackgroundPosition();
+  bool ParseBackgroundPosition(nsCSSProperty aPropID);
 
   // ParseBoxPositionValues parses the CSS 2.1 background-position syntax,
   // which is still used by some properties. See ParsePositionValue
@@ -849,7 +853,7 @@ protected:
   // the 'background-position' property.
   bool ParsePositionValue(nsCSSValue& aOut);
 
-  bool ParseBackgroundSize();
+  bool ParseBackgroundSize(nsCSSProperty aPropID);
   bool ParseBackgroundSizeValues(nsCSSValuePair& aOut);
   bool ParseBorderColor();
   bool ParseBorderColors(nsCSSProperty aProperty);
@@ -10514,11 +10518,11 @@ CSSParserImpl::ParsePropertyByFunction(nsCSSProperty aPropID)
   case eCSSProperty_background:
     return ParseBackground();
   case eCSSProperty_background_repeat:
-    return ParseBackgroundRepeat();
+    return ParseBackgroundRepeat(eCSSProperty_background_repeat);
   case eCSSProperty_background_position:
-    return ParseBackgroundPosition();
+    return ParseBackgroundPosition(eCSSProperty_background_position);
   case eCSSProperty_background_size:
-    return ParseBackgroundSize();
+    return ParseBackgroundSize(eCSSProperty_background_size);
   case eCSSProperty_border:
     return ParseBorderSide(kBorderTopIDs, true);
   case eCSSProperty_border_color:
@@ -10955,12 +10959,13 @@ CSSParserImpl::ParseBackground()
     return true;
   }
 
-  nsCSSValue image, repeat, attachment, clip, origin, position, size;
-  BackgroundParseState state(color, image.SetListValue(), 
-                             repeat.SetPairListValue(),
-                             attachment.SetListValue(), clip.SetListValue(),
-                             origin.SetListValue(), position.SetListValue(),
-                             size.SetPairListValue());
+  nsCSSValue image, repeat, attachment, clip, origin, position, size, composite, mode;
+  BackgroundParseState state(color, image.SetListValue(),
+                              repeat.SetPairListValue(),
+                              attachment.SetListValue(), clip.SetListValue(),
+                              origin.SetListValue(), position.SetListValue(),
+                              size.SetPairListValue(), composite.SetListValue(),
+                              mode.SetListValue());
 
   for (;;) {
     if (!ParseBackgroundItem(state)) {
@@ -11261,7 +11266,7 @@ CSSParserImpl::ParseValueList(nsCSSProperty aPropID)
 }
 
 bool
-CSSParserImpl::ParseBackgroundRepeat()
+CSSParserImpl::ParseBackgroundRepeat(nsCSSProperty aPropID)
 {
   nsCSSValue value;
   // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
@@ -11285,7 +11290,7 @@ CSSParserImpl::ParseBackgroundRepeat()
     }
   }
 
-  AppendValue(eCSSProperty_background_repeat, value);
+  AppendValue(aPropID, value);
   return true;
 }
 
@@ -11314,7 +11319,7 @@ CSSParserImpl::ParseBackgroundRepeatValues(nsCSSValuePair& aValue)
 // This function is very similar to ParseScrollSnapCoordinate,
 // ParseBackgroundList, and ParseBackgroundSize.
 bool
-CSSParserImpl::ParseBackgroundPosition()
+CSSParserImpl::ParseBackgroundPosition(nsCSSProperty aPropID)
 {
   nsCSSValue value;
   // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
@@ -11336,7 +11341,7 @@ CSSParserImpl::ParseBackgroundPosition()
       item = item->mNext;
     }
   }
-  AppendValue(eCSSProperty_background_position, value);
+  AppendValue(aPropID, value);
   return true;
 }
 
@@ -11632,7 +11637,7 @@ CSSParserImpl::ParsePositionValue(nsCSSValue& aOut)
 // This function is very similar to ParseScrollSnapCoordinate,
 // ParseBackgroundList, and ParseBackgroundPosition.
 bool
-CSSParserImpl::ParseBackgroundSize()
+CSSParserImpl::ParseBackgroundSize(nsCSSProperty aPropID)
 {
   nsCSSValue value;
   // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
@@ -11655,7 +11660,7 @@ CSSParserImpl::ParseBackgroundSize()
       item = item->mNext;
     }
   }
-  AppendValue(eCSSProperty_background_size, value);
+  AppendValue(aPropID, value);
   return true;
 }
 
