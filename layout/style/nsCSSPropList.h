@@ -537,7 +537,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundAttachmentKTable,
+    kImageLayerAttachmentKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -550,7 +550,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundOriginKTable,
+    kImageLayerOriginKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -605,7 +605,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundOriginKTable,
+    kImageLayerOriginKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -620,7 +620,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_STORES_CALC,
     "",
     0,
-    kBackgroundPositionKTable,
+    kImageLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_BACKGROUND(
@@ -633,7 +633,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
     "",
     VARIANT_KEYWORD, // used by list parsing
-    kBackgroundRepeatKTable,
+    kImageLayerRepeatKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_BACKGROUND(
@@ -648,7 +648,7 @@ CSS_PROP_BACKGROUND(
         CSS_PROPERTY_STORES_CALC,
     "",
     0,
-    kBackgroundSizeKTable,
+    kImageLayerSizeKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_DISPLAY(
@@ -2630,7 +2630,7 @@ CSS_PROP_POSITION(
         CSS_PROPERTY_ENABLED_IN_UA_SHEETS,
     "layout.css.object-fit-and-position.enabled",
     0,
-    kBackgroundPositionKTable,
+    kImageLayerPositionKTable,
     offsetof(nsStylePosition, mObjectPosition),
     eStyleAnimType_Custom)
 CSS_PROP_LOGICAL(
@@ -3111,7 +3111,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_STORES_CALC,
     "layout.css.scroll-snap.enabled",
     0,
-    kBackgroundPositionKTable,
+    kImageLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_DISPLAY(
@@ -3123,7 +3123,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_STORES_CALC,
     "layout.css.scroll-snap.enabled",
     0,
-    kBackgroundPositionKTable,
+    kImageLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_DISPLAY(
@@ -3408,7 +3408,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_GETCS_NEEDS_LAYOUT_FLUSH,
     "",
     0,
-    kBackgroundPositionKTable,
+    kImageLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_DISPLAY(
@@ -3420,7 +3420,7 @@ CSS_PROP_DISPLAY(
         CSS_PROPERTY_GETCS_NEEDS_LAYOUT_FLUSH,
     "",
     0,
-    kBackgroundPositionKTable,
+    kImageLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_Custom)
 CSS_PROP_DISPLAY(

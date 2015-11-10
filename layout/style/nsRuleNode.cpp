@@ -743,16 +743,16 @@ static float
 GetFloatFromBoxPosition(int32_t aEnumValue)
 {
   switch (aEnumValue) {
-  case NS_STYLE_BG_POSITION_LEFT:
-  case NS_STYLE_BG_POSITION_TOP:
+  case NS_STYLE_IMAGELAYER_POSITION_LEFT:
+  case NS_STYLE_IMAGELAYER_POSITION_TOP:
     return 0.0f;
-  case NS_STYLE_BG_POSITION_RIGHT:
-  case NS_STYLE_BG_POSITION_BOTTOM:
+  case NS_STYLE_IMAGELAYER_POSITION_RIGHT:
+  case NS_STYLE_IMAGELAYER_POSITION_BOTTOM:
     return 1.0f;
   default:
     NS_NOTREACHED("unexpected value");
     // fall through
-  case NS_STYLE_BG_POSITION_CENTER:
+  case NS_STYLE_IMAGELAYER_POSITION_CENTER:
     return 0.5f;
   }
 }
@@ -6376,13 +6376,13 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleImageLayers::Repeat>
     bool hasContraction = true;
     uint8_t value = aSpecifiedValue->mXValue.GetIntValue();
     switch (value) {
-    case NS_STYLE_BG_REPEAT_REPEAT_X:
-      aComputedValue.mXRepeat = NS_STYLE_BG_REPEAT_REPEAT;
-      aComputedValue.mYRepeat = NS_STYLE_BG_REPEAT_NO_REPEAT;
+    case NS_STYLE_IMAGELAYER_REPEAT_REPEAT_X:
+      aComputedValue.mXRepeat = NS_STYLE_IMAGELAYER_REPEAT_REPEAT;
+      aComputedValue.mYRepeat = NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT;
       break;
-    case NS_STYLE_BG_REPEAT_REPEAT_Y:
-      aComputedValue.mXRepeat = NS_STYLE_BG_REPEAT_NO_REPEAT;
-      aComputedValue.mYRepeat = NS_STYLE_BG_REPEAT_REPEAT;
+    case NS_STYLE_IMAGELAYER_REPEAT_REPEAT_Y:
+      aComputedValue.mXRepeat = NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT;
+      aComputedValue.mYRepeat = NS_STYLE_IMAGELAYER_REPEAT_REPEAT;
       break;
     default:
       aComputedValue.mXRepeat = value;
@@ -6402,8 +6402,8 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleImageLayers::Repeat>
       break;
     case eCSSUnit_Enumerated:
       value = aSpecifiedValue->mYValue.GetIntValue();
-      NS_ASSERTION(value == NS_STYLE_BG_REPEAT_NO_REPEAT ||
-                   value == NS_STYLE_BG_REPEAT_REPEAT, "Unexpected value");
+      NS_ASSERTION(value == NS_STYLE_IMAGELAYER_REPEAT_NO_REPEAT ||
+                   value == NS_STYLE_IMAGELAYER_REPEAT_REPEAT, "Unexpected value");
       aComputedValue.mYRepeat = value;
       break;
     default:
@@ -6465,8 +6465,8 @@ ComputePositionCoord(nsStyleContext* aStyleContext,
 
   if (eCSSUnit_Enumerated == aEdge.GetUnit()) {
     int sign;
-    if (aEdge.GetIntValue() & (NS_STYLE_BG_POSITION_BOTTOM |
-                               NS_STYLE_BG_POSITION_RIGHT)) {
+    if (aEdge.GetIntValue() & (NS_STYLE_IMAGELAYER_POSITION_BOTTOM |
+                               NS_STYLE_IMAGELAYER_POSITION_RIGHT)) {
       sign = -1;
     } else {
       sign = 1;
@@ -6561,12 +6561,12 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleImageLayers::Size>
       }
       else if (eCSSUnit_Enumerated == specified.GetUnit()) {
         static_assert(nsStyleImageLayers::Size::eContain ==
-                      NS_STYLE_BG_SIZE_CONTAIN &&
+                      NS_STYLE_IMAGELAYER_SIZE_CONTAIN &&
                       nsStyleImageLayers::Size::eCover ==
-                      NS_STYLE_BG_SIZE_COVER,
+                      NS_STYLE_IMAGELAYER_SIZE_COVER,
                       "background size constants out of sync");
-        MOZ_ASSERT(specified.GetIntValue() == NS_STYLE_BG_SIZE_CONTAIN ||
-                   specified.GetIntValue() == NS_STYLE_BG_SIZE_COVER,
+        MOZ_ASSERT(specified.GetIntValue() == NS_STYLE_IMAGELAYER_SIZE_CONTAIN ||
+                   specified.GetIntValue() == NS_STYLE_IMAGELAYER_SIZE_COVER,
                    "invalid enumerated value for size coordinate");
         size.*(axis->type) = specified.GetIntValue();
       }
@@ -6582,8 +6582,8 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleImageLayers::Size>
                      widthValue.GetUnit() != eCSSUnit_Unset,
                      "initial/inherit/unset should already have been handled");
           MOZ_ASSERT(widthValue.GetUnit() == eCSSUnit_Enumerated &&
-                     (widthValue.GetIntValue() == NS_STYLE_BG_SIZE_CONTAIN ||
-                      widthValue.GetIntValue() == NS_STYLE_BG_SIZE_COVER),
+                     (widthValue.GetIntValue() == NS_STYLE_IMAGELAYER_SIZE_CONTAIN ||
+                      widthValue.GetIntValue() == NS_STYLE_IMAGELAYER_SIZE_COVER),
                      "null height value not corresponding to allowable "
                      "non-null width value");
         }
@@ -6629,7 +6629,7 @@ struct BackgroundItemComputer<nsCSSValuePairList, nsStyleImageLayers::Size>
 
 template <class ComputedValueItem>
 static void
-SetBackgroundList(nsStyleContext* aStyleContext,
+SetImageLayerList(nsStyleContext* aStyleContext,
                   const nsCSSValue& aValue,
                   nsAutoTArray< nsStyleImageLayers::Layer, 1> &aLayers,
                   const nsAutoTArray<nsStyleImageLayers::Layer, 1> &aParentLayers,
@@ -6694,7 +6694,7 @@ SetBackgroundList(nsStyleContext* aStyleContext,
 
 template <class ComputedValueItem>
 static void
-SetBackgroundPairList(nsStyleContext* aStyleContext,
+SetImageLayerPairList(nsStyleContext* aStyleContext,
                       const nsCSSValue& aValue,
                       nsAutoTArray< nsStyleImageLayers::Layer, 1> &aLayers,
                       const nsAutoTArray<nsStyleImageLayers::Layer, 1>
@@ -6803,7 +6803,7 @@ nsRuleNode::ComputeBackgroundData(void* aStartStruct,
 
   // background-image: url (stored as image), none, inherit [list]
   nsStyleImage initialImage;
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundImage(),
+  SetImageLayerList(aContext, *aRuleData->ValueForBackgroundImage(),
                     bg->mLayers.mLayers,
                     parentBG->mLayers.mLayers, &nsStyleImageLayers::Layer::mImage,
                     initialImage, parentBG->mLayers.mImageCount, bg->mLayers.mImageCount,
@@ -6812,7 +6812,7 @@ nsRuleNode::ComputeBackgroundData(void* aStartStruct,
   // background-repeat: enum, inherit, initial [pair list]
   nsStyleImageLayers::Repeat initialRepeat;
   initialRepeat.SetInitialValues();
-  SetBackgroundPairList(aContext, *aRuleData->ValueForBackgroundRepeat(),
+  SetImageLayerPairList(aContext, *aRuleData->ValueForBackgroundRepeat(),
                         bg->mLayers.mLayers,
                         parentBG->mLayers.mLayers, &nsStyleImageLayers::Layer::mRepeat,
                         initialRepeat, parentBG->mLayers.mRepeatCount,
@@ -6820,23 +6820,23 @@ nsRuleNode::ComputeBackgroundData(void* aStartStruct,
                         conditions);
 
   // background-attachment: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundAttachment(),
+  SetImageLayerList(aContext, *aRuleData->ValueForBackgroundAttachment(),
                     bg->mLayers.mLayers, parentBG->mLayers.mLayers,
                     &nsStyleImageLayers::Layer::mAttachment,
-                    uint8_t(NS_STYLE_BG_ATTACHMENT_SCROLL),
+                    uint8_t(NS_STYLE_IMAGELAYER_ATTACHMENT_SCROLL),
                     parentBG->mLayers.mAttachmentCount,
                     bg->mLayers.mAttachmentCount, maxItemCount, rebuild,
                     conditions);
 
   // background-clip: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundClip(),
+  SetImageLayerList(aContext, *aRuleData->ValueForBackgroundClip(),
                     bg->mLayers.mLayers,
                     parentBG->mLayers.mLayers, &nsStyleImageLayers::Layer::mClip,
-                    uint8_t(NS_STYLE_BG_CLIP_BORDER), parentBG->mLayers.mClipCount,
+                    uint8_t(NS_STYLE_IMAGELAYER_CLIP_BORDER), parentBG->mLayers.mClipCount,
                     bg->mLayers.mClipCount, maxItemCount, rebuild, conditions);
 
   // background-blend-mode: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundBlendMode(),
+  SetImageLayerList(aContext, *aRuleData->ValueForBackgroundBlendMode(),
                     bg->mLayers.mLayers,
                     parentBG->mLayers.mLayers, &nsStyleImageLayers::Layer::mBlendMode,
                     uint8_t(NS_STYLE_BLEND_NORMAL), parentBG->mLayers.mBlendModeCount,
@@ -6844,17 +6844,17 @@ nsRuleNode::ComputeBackgroundData(void* aStartStruct,
                     conditions);
 
   // background-origin: enum, inherit, initial [list]
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundOrigin(),
+  SetImageLayerList(aContext, *aRuleData->ValueForBackgroundOrigin(),
                     bg->mLayers.mLayers,
                     parentBG->mLayers.mLayers, &nsStyleImageLayers::Layer::mOrigin,
-                    uint8_t(NS_STYLE_BG_ORIGIN_PADDING), parentBG->mLayers.mOriginCount,
+                    uint8_t(NS_STYLE_IMAGELAYER_ORIGIN_PADDING), parentBG->mLayers.mOriginCount,
                     bg->mLayers.mOriginCount, maxItemCount, rebuild,
                     conditions);
 
   // background-position: enum, length, percent (flags), inherit [pair list]
   nsStyleImageLayers::Position initialPosition;
   initialPosition.SetInitialPercentValues(0.0f);
-  SetBackgroundList(aContext, *aRuleData->ValueForBackgroundPosition(),
+  SetImageLayerList(aContext, *aRuleData->ValueForBackgroundPosition(),
                     bg->mLayers.mLayers,
                     parentBG->mLayers.mLayers, &nsStyleImageLayers::Layer::mPosition,
                     initialPosition, parentBG->mLayers.mPositionCount,
@@ -6864,7 +6864,7 @@ nsRuleNode::ComputeBackgroundData(void* aStartStruct,
   // background-size: enum, length, auto, inherit, initial [pair list]
   nsStyleImageLayers::Size initialSize;
   initialSize.SetInitialValues();
-  SetBackgroundPairList(aContext, *aRuleData->ValueForBackgroundSize(),
+  SetImageLayerPairList(aContext, *aRuleData->ValueForBackgroundSize(),
                         bg->mLayers.mLayers,
                         parentBG->mLayers.mLayers, &nsStyleImageLayers::Layer::mSize,
                         initialSize, parentBG->mLayers.mSizeCount,

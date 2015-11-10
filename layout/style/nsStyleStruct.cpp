@@ -1396,7 +1396,6 @@ bool nsStyleSVGPaint::operator==(const nsStyleSVGPaint& aOther) const
   return true;
 }
 
-
 // --------------------
 // nsStylePosition
 //
@@ -2446,14 +2445,14 @@ nsStyleImageLayers::Size::operator==(const Size& aOther) const
 void
 nsStyleImageLayers::Repeat::SetInitialValues()
 {
-  mXRepeat = NS_STYLE_BG_REPEAT_REPEAT;
-  mYRepeat = NS_STYLE_BG_REPEAT_REPEAT;
+  mXRepeat = NS_STYLE_IMAGELAYER_REPEAT_REPEAT;
+  mYRepeat = NS_STYLE_IMAGELAYER_REPEAT_REPEAT;
 }
 
 nsStyleImageLayers::Layer::Layer()
-: mClip(NS_STYLE_BG_CLIP_BORDER),
-  mOrigin(NS_STYLE_BG_ORIGIN_PADDING),
-  mAttachment(NS_STYLE_BG_ATTACHMENT_SCROLL),
+: mClip(NS_STYLE_IMAGELAYER_CLIP_BORDER),
+  mOrigin(NS_STYLE_IMAGELAYER_ORIGIN_PADDING),
+  mAttachment(NS_STYLE_IMAGELAYER_ATTACHMENT_SCROLL),
   mBlendMode(NS_STYLE_BLEND_NORMAL)
 {
   mPosition.SetInitialPercentValues(0.0f); // Initial value is "0% 0%"
@@ -2590,7 +2589,6 @@ nsChangeHint nsStyleBackground::CalcDifference(const nsStyleBackground& aOther) 
     return nsChangeHint_NeutralChange;
   }
 
-
   return NS_STYLE_HINT_NONE;
 }
 
@@ -2598,7 +2596,7 @@ bool nsStyleBackground::HasFixedBackground() const
 {
   NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(i, mLayers) {
     const nsStyleImageLayers::Layer &layer = mLayers.mLayers[i];
-    if (layer.mAttachment == NS_STYLE_BG_ATTACHMENT_FIXED &&
+    if (layer.mAttachment == NS_STYLE_IMAGELAYER_ATTACHMENT_FIXED &&
         !layer.mImage.IsEmpty()) {
       return true;
     }
