@@ -383,6 +383,218 @@ struct nsStyleColor {
   nscolor mColor;                 // [inherited]
 };
 
+struct nsStyleImageLayers {
+  nsStyleImageLayers();
+  nsStyleImageLayers(const nsStyleImageLayers &aSource);
+
+  struct Position;
+  friend struct Position;
+  struct Position {
+    typedef nsStyleCoord::CalcValue PositionCoord;
+    PositionCoord mXPosition, mYPosition;
+
+    // Initialize nothing
+    Position() {}
+
+    // Sets both mXPosition and mYPosition to the given percent value for the
+    // initial property-value (e.g. 0.0f for "0% 0%", or 0.5f for "50% 50%")
+    void SetInitialPercentValues(float aPercentVal);
+
+    // Sets both mXPosition and mYPosition to 0 (app units) for the
+    // initial property-value as a length with no percentage component.
+    void SetInitialZeroValues();
+
+    // True if the effective background image position described by this depends
+    // on the size of the corresponding frame.
+    bool DependsOnPositioningAreaSize() const {
+      return mXPosition.mPercent != 0.0f || mYPosition.mPercent != 0.0f;
+    }
+
+    bool operator==(const Position& aOther) const {
+      return mXPosition == aOther.mXPosition &&
+             mYPosition == aOther.mYPosition;
+    }
+    bool operator!=(const Position& aOther) const {
+      return !(*this == aOther);
+    }
+  };
+
+  struct Size;
+  friend struct Size;
+  struct Size {
+    struct Dimension : public nsStyleCoord::CalcValue {
+      nscoord ResolveLengthPercentage(nscoord aAvailable) const {
+        double d = double(mPercent) * double(aAvailable) + double(mLength);
+        if (d < 0.0)
+          return 0;
+        return NSToCoordRoundWithClamp(float(d));
+      }
+    };
+    Dimension mWidth, mHeight;
+
+    nscoord ResolveWidthLengthPercentage(const nsSize& aBgPositioningArea) const {
+      MOZ_ASSERT(mWidthType == eLengthPercentage,
+                 "resolving non-length/percent dimension!");
+      return mWidth.ResolveLengthPercentage(aBgPositioningArea.width);
+    }
+
+    nscoord ResolveHeightLengthPercentage(const nsSize& aBgPositioningArea) const {
+      MOZ_ASSERT(mHeightType == eLengthPercentage,
+                 "resolving non-length/percent dimension!");
+      return mHeight.ResolveLengthPercentage(aBgPositioningArea.height);
+    }
+
+    // Except for eLengthPercentage, Dimension types which might change
+    // how a layer is painted when the corresponding frame's dimensions
+    // change *must* precede all dimension types which are agnostic to
+    // frame size; see DependsOnDependsOnPositioningAreaSizeSize.
+    enum DimensionType {
+      // If one of mWidth and mHeight is eContain or eCover, then both are.
+      // NOTE: eContain and eCover *must* be equal to NS_STYLE_BG_SIZE_CONTAIN
+      // and NS_STYLE_BG_SIZE_COVER (in kBackgroundSizeKTable).
+      eContain, eCover,
+
+      eAuto,
+      eLengthPercentage,
+      eDimensionType_COUNT
+    };
+    uint8_t mWidthType, mHeightType;
+
+    // True if the effective image size described by this depends on the size of
+    // the corresponding frame, when aImage (which must not have null type) is
+    // the background image.
+    bool DependsOnPositioningAreaSize(const nsStyleImage& aImage) const;
+
+    // Initialize nothing
+    Size() {}
+
+    // Initialize to initial values
+    void SetInitialValues();
+
+    bool operator==(const Size& aOther) const;
+    bool operator!=(const Size& aOther) const {
+      return !(*this == aOther);
+    }
+  };
+
+  struct Repeat;
+  friend struct Repeat;
+  struct Repeat {
+    uint8_t mXRepeat, mYRepeat;
+
+    // Initialize nothing
+    Repeat() {}
+
+    // Initialize to initial values
+    void SetInitialValues();
+
+    bool operator==(const Repeat& aOther) const {
+      return mXRepeat == aOther.mXRepeat &&
+             mYRepeat == aOther.mYRepeat;
+    }
+    bool operator!=(const Repeat& aOther) const {
+      return !(*this == aOther);
+    }
+  };
+
+  struct Layer;
+  friend struct Layer;
+  struct Layer {
+    nsStyleImage  mImage;         // [reset]
+    Position      mPosition;      // [reset] See nsStyleConsts.h
+    Size          mSize;          // [reset]
+    uint8_t       mClip;          // [reset] See nsStyleConsts.h
+    uint8_t       mOrigin;        // [reset] See nsStyleConsts.h
+    uint8_t       mAttachment;    // [reset] See nsStyleConsts.h
+                                  // background-only property
+                                  // This property is used for background layer
+                                  // only. For a mask layer, it should always
+                                  // be the initial value, which is
+                                  // NS_STYLE_BG_ATTACHMENT_SCROLL.
+    uint8_t       mBlendMode;     // [reset] See nsStyleConsts.h
+                                  // background-only property
+                                  // This property is used for background layer
+                                  // only. For a mask layer, it should always
+                                  // be the initial value, which is
+                                  // NS_STYLE_BLEND_NORMAL.
+    Repeat        mRepeat;        // [reset] See nsStyleConsts.h
+
+    // Initializes only mImage
+    Layer();
+    ~Layer();
+
+    // Register/unregister images with the document. We do this only
+    // after the dust has settled in ComputeBackgroundData.
+    void TrackImages(nsPresContext* aContext) {
+      if (mImage.GetType() == eStyleImageType_Image)
+        mImage.TrackImage(aContext);
+    }
+    void UntrackImages(nsPresContext* aContext) {
+      if (mImage.GetType() == eStyleImageType_Image)
+        mImage.UntrackImage(aContext);
+    }
+
+    // True if the rendering of this layer might change when the size
+    // of the background positioning area changes.  This is true for any
+    // non-solid-color background whose position or size depends on
+    // the size of the positioning area.  It's also true for SVG images
+    // whose root <svg> node has a viewBox.
+    bool RenderingMightDependOnPositioningAreaSizeChange() const;
+
+    // Compute the change hint required by changes in just this layer.
+    nsChangeHint CalcDifference(const Layer& aOther) const;
+
+    // An equality operator that compares the images using URL-equality
+    // rather than pointer-equality.
+    bool operator==(const Layer& aOther) const;
+    bool operator!=(const Layer& aOther) const {
+      return !(*this == aOther);
+    }
+  };
+
+  // The (positive) number of computed values of each property, since
+  // the lengths of the lists are independent.
+  uint32_t mAttachmentCount,
+           mClipCount,
+           mOriginCount,
+           mRepeatCount,
+           mPositionCount,
+           mImageCount,
+           mSizeCount,
+           mBlendModeCount;
+
+  // Layers are stored in an array, matching the top-to-bottom order in
+  // which they are specified in CSS.  The number of layers to be used
+  // should come from the background-image property.  We create
+  // additional |Layer| objects for *any* property, not just
+  // background-image.  This means that the bottommost layer that
+  // callers in layout care about (which is also the one whose
+  // background-clip applies to the background-color) may not be last
+  // layer.  In layers below the bottom layer, properties will be
+  // uninitialized unless their count, above, indicates that they are
+  // present.
+  nsAutoTArray<Layer, 1> mLayers;
+
+  const Layer& BottomLayer() const { return mLayers[mImageCount - 1]; }
+
+  void TrackImages(nsPresContext* aContext) {
+    for (uint32_t i = 0; i < mImageCount; ++i) {
+        mLayers[i].TrackImages(aContext);
+    }
+  }
+  void UntrackImages(nsPresContext* aContext) {
+    for (uint32_t i = 0; i < mImageCount; ++i)
+      mLayers[i].UntrackImages(aContext);
+  }
+
+  #define NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT(var_, layers_) \
+    for (uint32_t var_ = layers_.mImageCount; var_-- != 0; )
+  #define NS_FOR_VISIBLE_IMAGELAYER_BACK_TO_FRONT_WITH_RANGE(var_, layers_, start_, count_) \
+    NS_ASSERTION((int32_t)(start_) >= 0 && (uint32_t)(start_) < (layers_.mImageCount), "Invalid layer start!"); \
+    NS_ASSERTION((count_) > 0 && (count_) <= (start_) + 1, "Invalid layer range!"); \
+    for (uint32_t var_ = (start_) + 1; var_-- != (uint32_t)((start_) + 1 - (count_)); )
+};
+
 struct nsStyleBackground {
   nsStyleBackground();
   nsStyleBackground(const nsStyleBackground& aOther);
@@ -566,6 +778,8 @@ struct nsStyleBackground {
 
   // The (positive) number of computed values of each property, since
   // the lengths of the lists are independent.
+  // The initial value of each counter is "1", since, at least, we need to
+  // store initial value of each property in mLayers.
   uint32_t mAttachmentCount,
            mClipCount,
            mOriginCount,
