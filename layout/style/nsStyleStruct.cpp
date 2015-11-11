@@ -2309,6 +2309,242 @@ nsStyleImage::operator==(const nsStyleImage& aOther) const
 }
 
 // --------------------
+// nsStyleImageLayers
+//
+
+nsStyleImageLayers::nsStyleImageLayers()
+  : mAttachmentCount(1)
+  , mClipCount(1)
+  , mOriginCount(1)
+  , mRepeatCount(1)
+  , mPositionCount(1)
+  , mImageCount(1)
+  , mSizeCount(1)
+  , mBlendModeCount(1)
+{
+  mLayers.AppendElement();
+  NS_ASSERTION(mLayers.Length() == 1, "auto array must have room for 1 element");
+}
+
+nsStyleImageLayers::nsStyleImageLayers(const nsStyleImageLayers &aSource)
+  : mAttachmentCount(aSource.mAttachmentCount)
+  , mClipCount(aSource.mClipCount)
+  , mOriginCount(aSource.mOriginCount)
+  , mRepeatCount(aSource.mRepeatCount)
+  , mPositionCount(aSource.mPositionCount)
+  , mImageCount(aSource.mImageCount)
+  , mSizeCount(aSource.mSizeCount)
+  , mBlendModeCount(aSource.mBlendModeCount)
+  , mLayers(aSource.mLayers) // deep copy
+{
+  // If the deep copy of mLayers failed, truncate the counts.
+  uint32_t count = mLayers.Length();
+  if (count != aSource.mLayers.Length()) {
+    NS_WARNING("truncating counts due to out-of-memory");
+    mAttachmentCount = std::max(mAttachmentCount, count);
+    mClipCount = std::max(mClipCount, count);
+    mOriginCount = std::max(mOriginCount, count);
+    mRepeatCount = std::max(mRepeatCount, count);
+    mPositionCount = std::max(mPositionCount, count);
+    mImageCount = std::max(mImageCount, count);
+    mSizeCount = std::max(mSizeCount, count);
+    mBlendModeCount = std::max(mBlendModeCount, count);
+  }
+}
+
+void
+nsStyleImageLayers::Position::SetInitialPercentValues(float aPercentVal)
+{
+  mXPosition.mPercent = aPercentVal;
+  mXPosition.mLength = 0;
+  mXPosition.mHasPercent = true;
+  mYPosition.mPercent = aPercentVal;
+  mYPosition.mLength = 0;
+  mYPosition.mHasPercent = true;
+}
+
+void
+nsStyleImageLayers::Position::SetInitialZeroValues()
+{
+  mXPosition.mPercent = 0;
+  mXPosition.mLength = 0;
+  mXPosition.mHasPercent = false;
+  mYPosition.mPercent = 0;
+  mYPosition.mLength = 0;
+  mYPosition.mHasPercent = false;
+}
+
+bool
+nsStyleImageLayers::Size::DependsOnPositioningAreaSize(const nsStyleImage& aImage) const
+{
+  MOZ_ASSERT(aImage.GetType() != eStyleImageType_Null,
+             "caller should have handled this");
+
+  // If either dimension contains a non-zero percentage, rendering for that
+  // dimension straightforwardly depends on frame size.
+  if ((mWidthType == eLengthPercentage && mWidth.mPercent != 0.0f) ||
+      (mHeightType == eLengthPercentage && mHeight.mPercent != 0.0f)) {
+    return true;
+  }
+
+  // So too for contain and cover.
+  if (mWidthType == eContain || mWidthType == eCover) {
+    return true;
+  }
+
+  // If both dimensions are fixed lengths, there's no dependency.
+  if (mWidthType == eLengthPercentage && mHeightType == eLengthPercentage) {
+    return false;
+  }
+
+  MOZ_ASSERT((mWidthType == eLengthPercentage && mHeightType == eAuto) ||
+             (mWidthType == eAuto && mHeightType == eLengthPercentage) ||
+             (mWidthType == eAuto && mHeightType == eAuto),
+             "logic error");
+
+  nsStyleImageType type = aImage.GetType();
+
+  // Gradient rendering depends on frame size when auto is involved because
+  // gradients have no intrinsic ratio or dimensions, and therefore the relevant
+  // dimension is "treat[ed] as 100%".
+  if (type == eStyleImageType_Gradient) {
+    return true;
+  }
+
+  // XXX Element rendering for auto or fixed length doesn't depend on frame size
+  //     according to the spec.  However, we don't implement the spec yet, so
+  //     for now we bail and say element() plus auto affects ultimate size.
+  if (type == eStyleImageType_Element) {
+    return true;
+  }
+
+  if (type == eStyleImageType_Image) {
+    nsCOMPtr<imgIContainer> imgContainer;
+    aImage.GetImageData()->GetImage(getter_AddRefs(imgContainer));
+    if (imgContainer) {
+      CSSIntSize imageSize;
+      nsSize imageRatio;
+      bool hasWidth, hasHeight;
+      nsLayoutUtils::ComputeSizeForDrawing(imgContainer, imageSize, imageRatio,
+                                           hasWidth, hasHeight);
+
+      // If the image has a fixed width and height, rendering never depends on
+      // the frame size.
+      if (hasWidth && hasHeight) {
+        return false;
+      }
+
+      // If the image has an intrinsic ratio, rendering will depend on frame
+      // size when background-size is all auto.
+      if (imageRatio != nsSize(0, 0)) {
+        return mWidthType == mHeightType;
+      }
+
+      // Otherwise, rendering depends on frame size when the image dimensions
+      // and background-size don't complement each other.
+      return !(hasWidth && mHeightType == eLengthPercentage) &&
+             !(hasHeight && mWidthType == eLengthPercentage);
+    }
+  } else {
+    NS_NOTREACHED("missed an enum value");
+  }
+
+  // Passed the gauntlet: no dependency.
+  return false;
+}
+
+void
+nsStyleImageLayers::Size::SetInitialValues()
+{
+  mWidthType = mHeightType = eAuto;
+}
+
+bool
+nsStyleImageLayers::Size::operator==(const Size& aOther) const
+{
+  MOZ_ASSERT(mWidthType < eDimensionType_COUNT,
+             "bad mWidthType for this");
+  MOZ_ASSERT(mHeightType < eDimensionType_COUNT,
+             "bad mHeightType for this");
+  MOZ_ASSERT(aOther.mWidthType < eDimensionType_COUNT,
+             "bad mWidthType for aOther");
+  MOZ_ASSERT(aOther.mHeightType < eDimensionType_COUNT,
+             "bad mHeightType for aOther");
+
+  return mWidthType == aOther.mWidthType &&
+         mHeightType == aOther.mHeightType &&
+         (mWidthType != eLengthPercentage || mWidth == aOther.mWidth) &&
+         (mHeightType != eLengthPercentage || mHeight == aOther.mHeight);
+}
+
+void
+nsStyleImageLayers::Repeat::SetInitialValues()
+{
+  mXRepeat = NS_STYLE_BG_REPEAT_REPEAT;
+  mYRepeat = NS_STYLE_BG_REPEAT_REPEAT;
+}
+
+nsStyleImageLayers::Layer::Layer()
+: mClip(NS_STYLE_BG_CLIP_BORDER),
+  mOrigin(NS_STYLE_BG_ORIGIN_PADDING),
+  mAttachment(NS_STYLE_BG_ATTACHMENT_SCROLL),
+  mBlendMode(NS_STYLE_BLEND_NORMAL)
+{
+  mPosition.SetInitialPercentValues(0.0f); // Initial value is "0% 0%"
+  mImage.SetNull();
+  mRepeat.SetInitialValues();
+  mSize.SetInitialValues();
+}
+
+nsStyleImageLayers::Layer::~Layer()
+{
+}
+
+bool
+nsStyleImageLayers::Layer::RenderingMightDependOnPositioningAreaSizeChange() const
+{
+  // Do we even have an image?
+  if (mImage.IsEmpty()) {
+    return false;
+  }
+
+  return mPosition.DependsOnPositioningAreaSize() ||
+      mSize.DependsOnPositioningAreaSize(mImage);
+}
+
+bool
+nsStyleImageLayers::Layer::operator==(const Layer& aOther) const
+{
+  return mAttachment == aOther.mAttachment &&
+         mClip == aOther.mClip &&
+         mOrigin == aOther.mOrigin &&
+         mRepeat == aOther.mRepeat &&
+         mBlendMode == aOther.mBlendMode &&
+         mPosition == aOther.mPosition &&
+         mSize == aOther.mSize &&
+         mImage == aOther.mImage;
+}
+
+nsChangeHint
+nsStyleImageLayers::Layer::CalcDifference(const nsStyleImageLayers::Layer& aOther) const
+{
+  nsChangeHint hint = nsChangeHint(0);
+  if (mAttachment != aOther.mAttachment ||
+      mClip != aOther.mClip ||
+      mOrigin != aOther.mOrigin ||
+      mRepeat != aOther.mRepeat ||
+      mBlendMode != aOther.mBlendMode ||
+      mSize != aOther.mSize ||
+      mImage != aOther.mImage) {
+    hint |= nsChangeHint_RepaintFrame;
+  }
+  if (mPosition != aOther.mPosition) {
+    hint |= nsChangeHint_SchedulePaint;
+  }
+  return hint;
+}
+
+// --------------------
 // nsStyleBackground
 //
 
