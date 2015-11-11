@@ -22,6 +22,7 @@
 #include "nsCoord.h"
 #include "nsColor.h"
 #include "nsIContent.h"
+#include "nsStyleStruct.h"
 
 namespace mozilla {
 namespace dom {
@@ -35,7 +36,6 @@ class nsIPresShell;
 class nsDOMCSSValueList;
 struct nsMargin;
 class nsROCSSPrimitiveValue;
-struct nsStyleBackground;
 class nsStyleCoord;
 class nsStyleCorners;
 struct nsStyleFilter;
@@ -189,8 +189,9 @@ private:
                                             const nscolor& aDefaultColor,
                                             bool aIsBoxShadow);
 
-  mozilla::dom::CSSValue* GetBackgroundList(uint8_t nsStyleBackground::Layer::* aMember,
-                                            uint32_t nsStyleBackground::* aCount,
+  mozilla::dom::CSSValue* GetBackgroundList(uint8_t nsStyleImageLayers::Layer::* aMember,
+                                            uint32_t nsStyleImageLayers::* aCount,
+                                            const nsStyleImageLayers& aLayers,
                                             const KTableEntry aTable[]);
 
   void GetCSSGradientString(const nsStyleGradient* aGradient,
@@ -543,9 +544,9 @@ private:
   void SetValueToStyleImage(const nsStyleImage& aStyleImage,
                             nsROCSSPrimitiveValue* aValue);
   void SetValueToPositionCoord(
-    const nsStyleBackground::Position::PositionCoord& aCoord,
+    const nsStyleImageLayers::Position::PositionCoord& aCoord,
     nsROCSSPrimitiveValue* aValue);
-  void SetValueToPosition(const nsStyleBackground::Position& aPosition,
+  void SetValueToPosition(const nsStyleImageLayers::Position& aPosition,
                           nsDOMCSSValueList* aValueList);
 
   /**
