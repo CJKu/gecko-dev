@@ -271,6 +271,12 @@ private:
   mozilla::dom::CSSValue* DoGetGridColumnGap();
   mozilla::dom::CSSValue* DoGetGridRowGap();
 
+  /* StyleImageLayer properties */
+  mozilla::dom::CSSValue* DoGetImageLayerImage(const nsStyleImageLayers& aLayers);
+  mozilla::dom::CSSValue* DoGetImageLayerPosition(const nsStyleImageLayers& aLayers);
+  mozilla::dom::CSSValue* DoGetImageLayerRepeat(const nsStyleImageLayers& aLayers);
+  mozilla::dom::CSSValue* DoGetImageLayerSize(const nsStyleImageLayers& aLayers);
+
   /* Background properties */
   mozilla::dom::CSSValue* DoGetBackgroundAttachment();
   mozilla::dom::CSSValue* DoGetBackgroundColor();
@@ -281,6 +287,17 @@ private:
   mozilla::dom::CSSValue* DoGetBackgroundBlendMode();
   mozilla::dom::CSSValue* DoGetBackgroundOrigin();
   mozilla::dom::CSSValue* DoGetBackgroundSize();
+
+  /* Mask properties */
+  mozilla::dom::CSSValue* DoGetMask();
+  mozilla::dom::CSSValue* DoGetMaskImage();
+  mozilla::dom::CSSValue* DoGetMaskPosition();
+  mozilla::dom::CSSValue* DoGetMaskRepeat();
+  mozilla::dom::CSSValue* DoGetMaskClip();
+  mozilla::dom::CSSValue* DoGetMaskOrigin();
+  mozilla::dom::CSSValue* DoGetMaskSize();
+  mozilla::dom::CSSValue* DoGetMaskMode();
+  mozilla::dom::CSSValue* DoGetMaskComposite();
 
   /* Padding properties */
   mozilla::dom::CSSValue* DoGetPaddingTop();
@@ -530,7 +547,6 @@ private:
 
   mozilla::dom::CSSValue* DoGetClipPath();
   mozilla::dom::CSSValue* DoGetFilter();
-  mozilla::dom::CSSValue* DoGetMask();
   mozilla::dom::CSSValue* DoGetMaskType();
   mozilla::dom::CSSValue* DoGetPaintOrder();
 
