@@ -282,6 +282,12 @@ private:
   already_AddRefed<CSSValue> DoGetGridColumnGap();
   already_AddRefed<CSSValue> DoGetGridRowGap();
 
+  /* StyleImageLayer properties */
+  already_AddRefed<CSSValue> DoGetImageLayerImage(const nsStyleImageLayers& aLayers);
+  already_AddRefed<CSSValue> DoGetImageLayerPosition(const nsStyleImageLayers& aLayers);
+  already_AddRefed<CSSValue> DoGetImageLayerRepeat(const nsStyleImageLayers& aLayers);
+  already_AddRefed<CSSValue> DoGetImageLayerSize(const nsStyleImageLayers& aLayers);
+
   /* Background properties */
   already_AddRefed<CSSValue> DoGetBackgroundAttachment();
   already_AddRefed<CSSValue> DoGetBackgroundColor();
@@ -292,6 +298,17 @@ private:
   already_AddRefed<CSSValue> DoGetBackgroundBlendMode();
   already_AddRefed<CSSValue> DoGetBackgroundOrigin();
   already_AddRefed<CSSValue> DoGetBackgroundSize();
+
+  /* Mask properties */
+  already_AddRefed<CSSValue> DoGetMask();
+  already_AddRefed<CSSValue> DoGetMaskImage();
+  already_AddRefed<CSSValue> DoGetMaskPosition();
+  already_AddRefed<CSSValue> DoGetMaskRepeat();
+  already_AddRefed<CSSValue> DoGetMaskClip();
+  already_AddRefed<CSSValue> DoGetMaskOrigin();
+  already_AddRefed<CSSValue> DoGetMaskSize();
+  already_AddRefed<CSSValue> DoGetMaskMode();
+  already_AddRefed<CSSValue> DoGetMaskComposite();
 
   /* Padding properties */
   already_AddRefed<CSSValue> DoGetPaddingTop();
@@ -541,7 +558,6 @@ private:
 
   already_AddRefed<CSSValue> DoGetClipPath();
   already_AddRefed<CSSValue> DoGetFilter();
-  already_AddRefed<CSSValue> DoGetMask();
   already_AddRefed<CSSValue> DoGetMaskType();
   already_AddRefed<CSSValue> DoGetPaintOrder();
 
