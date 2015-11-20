@@ -399,6 +399,21 @@ struct nsStyleImageLayers {
     MOZ_COUNT_DTOR(nsStyleImageLayers);
   }
 
+  // Indices into kBackgroundLayerTable and kMaskLayerTable
+  enum {
+    shorthand = 0,
+    color,
+    image,
+    repeat,
+    position,
+    clip,
+    origin,
+    size,
+    attachment,
+    maskMode,
+    composite
+  };
+
   struct Position;
   friend struct Position;
   struct Position {
@@ -407,6 +422,8 @@ struct nsStyleImageLayers {
 
     // Initialize nothing
     Position() {}
+
+    bool IsInitialValue() const;
 
     // Sets both mXPosition and mYPosition to the given percent value for the
     // initial property-value (e.g. 0.0f for "0% 0%", or 0.5f for "50% 50%")
@@ -443,6 +460,10 @@ struct nsStyleImageLayers {
       }
     };
     Dimension mWidth, mHeight;
+
+    bool IsInitialValue() const {
+      return mWidthType == eAuto && mHeightType == eAuto;
+    }
 
     nscoord ResolveWidthLengthPercentage(const nsSize& aBgPositioningArea) const {
       MOZ_ASSERT(mWidthType == eLengthPercentage,
@@ -497,6 +518,11 @@ struct nsStyleImageLayers {
     // Initialize nothing
     Repeat() {}
 
+    bool IsInitialValue() const {
+      return mXRepeat == NS_STYLE_IMAGELAYER_REPEAT_REPEAT &&
+             mYRepeat == NS_STYLE_IMAGELAYER_REPEAT_REPEAT;
+    }
+
     // Initialize to initial values
     void SetInitialValues();
 
@@ -522,13 +548,25 @@ struct nsStyleImageLayers {
                                   // This property is used for background layer
                                   // only. For a mask layer, it should always
                                   // be the initial value, which is
-                                  // NS_STYLE_BG_ATTACHMENT_SCROLL.
+                                  // NS_STYLE_IMAGELAYER_ATTACHMENT_SCROLL.
     uint8_t       mBlendMode;     // [reset] See nsStyleConsts.h
                                   // background-only property
                                   // This property is used for background layer
                                   // only. For a mask layer, it should always
                                   // be the initial value, which is
                                   // NS_STYLE_BLEND_NORMAL.
+    uint8_t       mComposite;     // [reset] See nsStyleConsts.h
+                                  // mask-only property
+                                  // This property is used for mask layer only.
+                                  // For a background layer, it should always
+                                  // be the initial value, which is
+                                  // NS_STYLE_COMPOSITE_MODE_ADD.
+    uint8_t       mMaskMode;      // [reset] See nsStyleConsts.h
+                                  // mask-only property
+                                  // This property is used for mask layer only.
+                                  // For a background layer, it should always
+                                  // be the initial value, which is
+                                  // NS_STYLE_MASK_MODE_AUTO.
     Repeat        mRepeat;        // [reset] See nsStyleConsts.h
 
     // Initializes only mImage
@@ -573,7 +611,9 @@ struct nsStyleImageLayers {
            mPositionCount,
            mImageCount,
            mSizeCount,
-           mBlendModeCount;
+           mMaskModeCount,
+           mBlendModeCount,
+           mCompositeCount;
 
   // Layers are stored in an array, matching the top-to-bottom order in
   // which they are specified in CSS.  The number of layers to be used
@@ -598,6 +638,14 @@ struct nsStyleImageLayers {
     for (uint32_t i = 0; i < mImageCount; ++i)
       mLayers[i].UntrackImages(aContext);
   }
+
+  nsChangeHint CalcDifference(const nsStyleImageLayers& aOther) const;
+
+  bool HasLayerWithImage() const;
+
+  static const nsCSSProperty kBackgroundLayerTable[];
+  static const nsCSSProperty kMaskLayerTable[];
+
   #define NS_FOR_VISIBLE_IMAGE_LAYERS_BACK_TO_FRONT(var_, layers_) \
     for (uint32_t var_ = (layers_).mImageCount; var_-- != 0; )
   #define NS_FOR_VISIBLE_IMAGE_LAYERS_BACK_TO_FRONT_WITH_RANGE(var_, layers_, start_, count_) \
@@ -3362,16 +3410,14 @@ struct nsStyleSVGReset {
     return aContext->PresShell()->
       AllocateByObjectID(mozilla::eArenaObjectID_nsStyleSVGReset, sz);
   }
-  void Destroy(nsPresContext* aContext) {
-    this->~nsStyleSVGReset();
-    aContext->PresShell()->
-      FreeByObjectID(mozilla::eArenaObjectID_nsStyleSVGReset, this);
-  }
+  void Destroy(nsPresContext* aContext);
 
   nsChangeHint CalcDifference(const nsStyleSVGReset& aOther) const;
   static nsChangeHint MaxDifference() {
-    return NS_CombineHint(nsChangeHint_UpdateEffects,
-            NS_CombineHint(nsChangeHint_UpdateOverflow, NS_STYLE_HINT_REFLOW));
+    return nsChangeHint_UpdateEffects |
+           nsChangeHint_UpdateOverflow |
+           nsChangeHint_NeutralChange |
+           NS_STYLE_HINT_REFLOW;
   }
   static nsChangeHint DifferenceAlwaysHandledForDescendants() {
     // CalcDifference never returns the reflow hints that are sometimes
@@ -3389,6 +3435,7 @@ struct nsStyleSVGReset {
     return mVectorEffect == NS_STYLE_VECTOR_EFFECT_NON_SCALING_STROKE;
   }
 
+  nsStyleImageLayers    mLayers;
   nsStyleClipPath mClipPath;          // [reset]
   nsTArray<nsStyleFilter> mFilters;   // [reset]
   nsCOMPtr<nsIURI> mMask;             // [reset]
