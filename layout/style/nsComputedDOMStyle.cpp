@@ -2121,17 +2121,15 @@ nsComputedDOMStyle::SetValueToStyleImage(const nsStyleImage& aStyleImage,
 }
 
 CSSValue*
-nsComputedDOMStyle::DoGetBackgroundImage()
+nsComputedDOMStyle::DoGetImageLayerImage(const nsStyleImageLayers& aLayers)
 {
-  const nsStyleBackground* bg = StyleBackground();
-
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mLayers.mImageCount; i < i_end; ++i) {
+  for (uint32_t i = 0, i_end = aLayers.mImageCount; i < i_end; ++i) {
     nsROCSSPrimitiveValue *val = new nsROCSSPrimitiveValue;
     valueList->AppendCSSValue(val);
 
-    const nsStyleImage& image = bg->mLayers.mLayers[i].mImage;
+    const nsStyleImage& image = aLayers.mLayers[i].mImage;
     SetValueToStyleImage(image, val);
   }
 
@@ -2139,86 +2137,34 @@ nsComputedDOMStyle::DoGetBackgroundImage()
 }
 
 CSSValue*
-nsComputedDOMStyle::DoGetBackgroundBlendMode()
+nsComputedDOMStyle::DoGetImageLayerPosition(const nsStyleImageLayers& aLayers)
 {
-  return GetBackgroundList(&nsStyleImageLayers::Layer::mBlendMode,
-                           &nsStyleImageLayers::mBlendModeCount,
-                           StyleBackground()->mLayers,
-                           nsCSSProps::kBlendModeKTable);
-}
-
-CSSValue*
-nsComputedDOMStyle::DoGetBackgroundOrigin()
-{
-  return GetBackgroundList(&nsStyleImageLayers::Layer::mOrigin,
-                           &nsStyleImageLayers::mOriginCount,
-                           StyleBackground()->mLayers,
-                           nsCSSProps::kImageLayerOriginKTable);
-}
-
-void
-nsComputedDOMStyle::SetValueToPositionCoord(
-    const nsStyleImageLayers::Position::PositionCoord& aCoord,
-    nsROCSSPrimitiveValue* aValue)
-{
-  if (!aCoord.mHasPercent) {
-    MOZ_ASSERT(aCoord.mPercent == 0.0f,
-               "Shouldn't have mPercent!");
-    aValue->SetAppUnits(aCoord.mLength);
-  } else if (aCoord.mLength == 0) {
-    aValue->SetPercent(aCoord.mPercent);
-  } else {
-    SetValueToCalc(&aCoord, aValue);
-  }
-}
-
-void
-nsComputedDOMStyle::SetValueToPosition(
-    const nsStyleImageLayers::Position& aPosition,
-    nsDOMCSSValueList* aValueList)
-{
-  nsROCSSPrimitiveValue* valX = new nsROCSSPrimitiveValue;
-  aValueList->AppendCSSValue(valX);
-  SetValueToPositionCoord(aPosition.mXPosition, valX);
-
-  nsROCSSPrimitiveValue* valY = new nsROCSSPrimitiveValue;
-  aValueList->AppendCSSValue(valY);
-  SetValueToPositionCoord(aPosition.mYPosition, valY);
-}
-
-CSSValue*
-nsComputedDOMStyle::DoGetBackgroundPosition()
-{
-  const nsStyleBackground* bg = StyleBackground();
-
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mLayers.mPositionCount; i < i_end; ++i) {
+  for (uint32_t i = 0, i_end = aLayers.mPositionCount; i < i_end; ++i) {
     nsDOMCSSValueList *itemList = GetROCSSValueList(false);
     valueList->AppendCSSValue(itemList);
 
-    SetValueToPosition(bg->mLayers.mLayers[i].mPosition, itemList);
+    SetValueToPosition(aLayers.mLayers[i].mPosition, itemList);
   }
 
   return valueList;
 }
 
 CSSValue*
-nsComputedDOMStyle::DoGetBackgroundRepeat()
+nsComputedDOMStyle::DoGetImageLayerRepeat(const nsStyleImageLayers& aLayers)
 {
-  const nsStyleBackground* bg = StyleBackground();
-
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mLayers.mRepeatCount; i < i_end; ++i) {
+  for (uint32_t i = 0, i_end = aLayers.mRepeatCount; i < i_end; ++i) {
     nsDOMCSSValueList *itemList = GetROCSSValueList(false);
     valueList->AppendCSSValue(itemList);
 
     nsROCSSPrimitiveValue *valX = new nsROCSSPrimitiveValue;
     itemList->AppendCSSValue(valX);
 
-    const uint8_t& xRepeat = bg->mLayers.mLayers[i].mRepeat.mXRepeat;
-    const uint8_t& yRepeat = bg->mLayers.mLayers[i].mRepeat.mYRepeat;
+    const uint8_t& xRepeat = aLayers.mLayers[i].mRepeat.mXRepeat;
+    const uint8_t& yRepeat = aLayers.mLayers[i].mRepeat.mYRepeat;
 
     bool hasContraction = true;
     unsigned contraction;
@@ -2240,7 +2186,7 @@ nsComputedDOMStyle::DoGetBackgroundRepeat()
     } else {
       nsROCSSPrimitiveValue *valY = new nsROCSSPrimitiveValue;
       itemList->AppendCSSValue(valY);
-      
+
       valX->SetIdent(nsCSSProps::ValueToKeywordEnum(xRepeat,
                                           nsCSSProps::kImageLayerRepeatKTable));
       valY->SetIdent(nsCSSProps::ValueToKeywordEnum(yRepeat,
@@ -2251,16 +2197,13 @@ nsComputedDOMStyle::DoGetBackgroundRepeat()
   return valueList;
 }
 
-
 CSSValue*
-nsComputedDOMStyle::DoGetBackgroundSize()
+nsComputedDOMStyle::DoGetImageLayerSize(const nsStyleImageLayers& aLayers)
 {
-  const nsStyleBackground* bg = StyleBackground();
-
   nsDOMCSSValueList *valueList = GetROCSSValueList(true);
 
-  for (uint32_t i = 0, i_end = bg->mLayers.mSizeCount; i < i_end; ++i) {
-    const nsStyleImageLayers::Size &size = bg->mLayers.mLayers[i].mSize;
+  for (uint32_t i = 0, i_end = aLayers.mSizeCount; i < i_end; ++i) {
+    const nsStyleImageLayers::Size &size = aLayers.mLayers[i].mSize;
 
     switch (size.mWidthType) {
       case nsStyleImageLayers::Size::eContain:
@@ -2331,6 +2274,82 @@ nsComputedDOMStyle::DoGetBackgroundSize()
   }
 
   return valueList;
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetBackgroundImage()
+{
+  const nsStyleImageLayers& layers = StyleBackground()->mLayers;
+  return DoGetImageLayerImage(layers);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetBackgroundBlendMode()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mBlendMode,
+                           &nsStyleImageLayers::mBlendModeCount,
+                           StyleBackground()->mLayers,
+                           nsCSSProps::kBlendModeKTable);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetBackgroundOrigin()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mOrigin,
+                           &nsStyleImageLayers::mOriginCount,
+                           StyleBackground()->mLayers,
+                           nsCSSProps::kImageLayerOriginKTable);
+}
+
+void
+nsComputedDOMStyle::SetValueToPositionCoord(
+    const nsStyleImageLayers::Position::PositionCoord& aCoord,
+    nsROCSSPrimitiveValue* aValue)
+{
+  if (!aCoord.mHasPercent) {
+    MOZ_ASSERT(aCoord.mPercent == 0.0f,
+               "Shouldn't have mPercent!");
+    aValue->SetAppUnits(aCoord.mLength);
+  } else if (aCoord.mLength == 0) {
+    aValue->SetPercent(aCoord.mPercent);
+  } else {
+    SetValueToCalc(&aCoord, aValue);
+  }
+}
+
+void
+nsComputedDOMStyle::SetValueToPosition(
+    const nsStyleImageLayers::Position& aPosition,
+    nsDOMCSSValueList* aValueList)
+{
+  nsROCSSPrimitiveValue* valX = new nsROCSSPrimitiveValue;
+  aValueList->AppendCSSValue(valX);
+  SetValueToPositionCoord(aPosition.mXPosition, valX);
+
+  nsROCSSPrimitiveValue* valY = new nsROCSSPrimitiveValue;
+  aValueList->AppendCSSValue(valY);
+  SetValueToPositionCoord(aPosition.mYPosition, valY);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetBackgroundPosition()
+{
+  const nsStyleImageLayers& layers = StyleBackground()->mLayers;
+  return DoGetImageLayerPosition(layers);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetBackgroundRepeat()
+{
+  const nsStyleImageLayers& layers = StyleBackground()->mLayers;
+  return DoGetImageLayerRepeat(layers);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetBackgroundSize()
+{
+  const nsStyleImageLayers& layers = StyleBackground()->mLayers;
+  return DoGetImageLayerSize(layers);
 }
 
 CSSValue*
@@ -5848,9 +5867,23 @@ nsComputedDOMStyle::DoGetFilter()
 CSSValue*
 nsComputedDOMStyle::DoGetMask()
 {
-  nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
-
   const nsStyleSVGReset* svg = StyleSVGReset();
+  const nsStyleImageLayers::Layer& firstLayer = svg->mLayers.mLayers[0];
+
+  if (svg->mLayers.mImageCount > 1 ||
+      firstLayer.mClip != NS_STYLE_IMAGELAYER_CLIP_BORDER ||
+      firstLayer.mOrigin != NS_STYLE_IMAGELAYER_ORIGIN_PADDING ||
+      firstLayer.mAttachment != NS_STYLE_IMAGELAYER_ATTACHMENT_SCROLL ||
+      firstLayer.mBlendMode != NS_STYLE_BLEND_NORMAL ||
+      firstLayer.mComposite != NS_STYLE_COMPOSITE_MODE_ADD ||
+      firstLayer.mMaskMode != NS_STYLE_MASK_MODE_AUTO ||
+      !nsStyleImageLayers::Position::IsInitialValue(firstLayer.mPosition) ||
+      !nsStyleImageLayers::Repeat::IsInitialValue(firstLayer.mRepeat) ||
+      !nsStyleImageLayers::Size::IsInitialValue(firstLayer.mSize)){
+    return nullptr;
+  }
+
+  nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
 
   if (svg->mMask)
     val->SetURI(svg->mMask);
@@ -5860,6 +5893,68 @@ nsComputedDOMStyle::DoGetMask()
   return val;
 }
 
+CSSValue*
+nsComputedDOMStyle::DoGetMaskClip()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mClip,
+                           &nsStyleImageLayers::mClipCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kImageLayerOriginKTable);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskComposite()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mComposite,
+                           &nsStyleImageLayers::mCompositeCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kImageLayerCompositeKTable);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskImage()
+{
+  const nsStyleImageLayers& layers = StyleSVGReset()->mLayers;
+  return DoGetImageLayerImage(layers);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskMode()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mMaskMode,
+                           &nsStyleImageLayers::mMaskModeCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kImageLayerModeKTable);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskOrigin()
+{
+  return GetBackgroundList(&nsStyleImageLayers::Layer::mOrigin,
+                           &nsStyleImageLayers::mOriginCount,
+                           StyleSVGReset()->mLayers,
+                           nsCSSProps::kImageLayerOriginKTable);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskPosition()
+{
+  const nsStyleImageLayers& layers = StyleSVGReset()->mLayers;
+  return DoGetImageLayerPosition(layers);
+}
+CSSValue*
+nsComputedDOMStyle::DoGetMaskRepeat()
+{
+  const nsStyleImageLayers& layers = StyleSVGReset()->mLayers;
+  return DoGetImageLayerRepeat(layers);
+}
+
+CSSValue*
+nsComputedDOMStyle::DoGetMaskSize()
+{
+  const nsStyleImageLayers& layers = StyleSVGReset()->mLayers;
+  return DoGetImageLayerSize(layers);
+}
 CSSValue*
 nsComputedDOMStyle::DoGetMaskType()
 {
