@@ -153,11 +153,10 @@ nsSVGIntegrationUtils::UsingEffectsForFrame(const nsIFrame* aFrame)
   // checking the SDL prefs here, since we don't know if we're being called for
   // painting or hit-testing anyway.
   const nsStyleSVGReset *style = aFrame->StyleSVGReset();
-  bool hasValidLayers = style->mLayers.HasValidLayers();
 
-  return (style->HasFilters() || style->mMask ||
-          (style->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE) ||
-          hasValidLayers);
+  return (style->HasFilters()
+          || (style->mClipPath.GetType() != NS_STYLE_CLIP_PATH_NONE)
+          || style->mLayers.HasValidLayers());
 }
 
 // For non-SVG frames, this gives the offset to the frame's "user space".
@@ -512,22 +511,33 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
   gfxMatrix cssPxToDevPxMatrix = GetCSSPxToDevPxMatrix(aFrame);
 
   const nsStyleSVGReset *svgReset = firstFrame->StyleSVGReset();
-  nsSVGMaskFrame *maskFrame = effectProperties.GetMaskFrame(&isOK);
-  if (!isOK) {
-    return; // Some resource is missing. We shouldn't paint anything.
+  nsAutoTArray<nsSVGMaskFrame *, 1> svgMaskList;
+  for (uint32_t i = 0; i < effectProperties.mMaskList.Length(); i++) {
+    nsSVGMaskFrame *maskFrame = effectProperties.GetMaskFrame(&isOK, i);
+    if (isOK)
+      svgMaskList.AppendElement(maskFrame);
   }
+
+  bool hasImageMask = svgReset->mLayers.HasValidLayers();
+  bool hasSVGMask = (svgMaskList.Length() > 0);
+  if (!hasImageMask && hasSVGMask) {
+    // There is no valid mask resource at all.
+    return;
+  }
+
   bool complexEffects = false;
-  bool hasValidLayers = svgReset->mLayers.HasValidLayers();
 
   // These are used if we require a temporary surface for a custom blend mode.
   RefPtr<gfxContext> target = &aContext;
   IntPoint targetOffset;
+  nsAutoTArray<RefPtr<SourceSurface>, 1> maskSurfaceList;
+  nsAutoTArray<Matrix, 1> maskTransformList;
 
   /* Check if we need to do additional operations on this child's
    * rendering, which necessitates rendering into another surface. */
   if (opacity != 1.0f ||  (clipPathFrame && !isTrivialClip)
       || aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL
-      || maskFrame || hasValidLayers) {
+      || hasImageMask || hasSVGMask) {
     complexEffects = true;
 
     aContext.Save();
@@ -537,16 +547,23 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
                                   aFrame->PresContext()->AppUnitsPerDevPixel(),
                                   *drawTarget));
 
-    Matrix maskTransform;
-    RefPtr<SourceSurface> maskSurface;
-    if (maskFrame) {
-      maskSurface = maskFrame->GetMaskForMaskedFrame(&aContext,
-                                                     aFrame,
-                                                     cssPxToDevPxMatrix,
-                                                     opacity,
-                                                     &maskTransform);
-    }
-    else if (hasValidLayers) {
+    if (hasSVGMask) {
+      // According to spec, The used value of the properties mask-repeat,
+      // mask-position, mask-clip, mask-origin and mask-size must have no
+      // effect if <mask-reference> references a mask element.
+      for (uint32_t i = svgReset->mLayers.mImageCount; i-- != 0; ) {
+        Matrix maskTransform;
+        maskSurfaceList.AppendElement(
+          svgMaskList[i]->GetMaskForMaskedFrame(&aContext,
+                                                aFrame,
+                                                cssPxToDevPxMatrix,
+                                                opacity,
+                                                &maskTransform));
+        maskTransformList.AppendElement(maskTransform);
+      }
+    } else if (hasImageMask) {
+      Matrix maskTransform;
+      RefPtr<SourceSurface> maskSurface;
       gfxRect clipRect = aContext.GetClipExtents();
       {
         gfxContextMatrixAutoSaveRestore matRestore(&aContext);
@@ -583,9 +600,12 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
       Matrix deviceOffsetTranslation;
       deviceOffsetTranslation.PreTranslate(deviceOffset.x, deviceOffset.y);
       maskTransform = deviceOffsetTranslation * mat;
+
+      maskSurfaceList.AppendElement(maskSurface);
+      maskTransformList.AppendElement(maskTransform);
     }
 
-    if (maskFrame && !maskSurface) {
+    if (maskSurfaceList.Length() == 0) {
       // Entire surface is clipped out.
       aContext.Restore();
       return;
@@ -611,19 +631,29 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
     }
 
     if (clipPathFrame && !isTrivialClip) {
-      Matrix clippedMaskTransform;
-      RefPtr<SourceSurface> clipMaskSurface = clipPathFrame->GetClipMask(aContext, aFrame, cssPxToDevPxMatrix,
-                                                                         &clippedMaskTransform, maskSurface, maskTransform);
+      nsAutoTArray<RefPtr<SourceSurface>, 1> clipMaskSurfaceList;
+      nsAutoTArray<Matrix, 1> clipMaskTransformList;
+      for (uint32_t i = 0; i < maskSurfaceList.Length(); i++) {
+        Matrix clippedMaskTransform;
+        RefPtr<SourceSurface> clipMaskSurface =
+          clipPathFrame->GetClipMask(aContext, aFrame, cssPxToDevPxMatrix,
+                                     &clippedMaskTransform, maskSurfaceList[i],
+                                     maskTransformList[i]);
 
-      if (clipMaskSurface) {
-        maskSurface = clipMaskSurface;
-        maskTransform = clippedMaskTransform;
+        if (clipMaskSurface) {
+          clipMaskSurfaceList.AppendElement(clipMaskSurface);
+          clipMaskTransformList.AppendElement(clippedMaskTransform);
+        }
       }
+      maskSurfaceList = clipMaskSurfaceList;
+      maskTransformList = clipMaskTransformList;
     }
 
-    if (opacity != 1.0f || maskFrame  || hasValidLayers ||
+    if (opacity != 1.0f || hasSVGMask || hasImageMask ||
         (clipPathFrame && !isTrivialClip)) {
-      target->PushGroupForBlendBack(gfxContentType::COLOR_ALPHA, opacity, maskSurface, maskTransform);
+      for (uint32_t i = 0; i < maskSurfaceList.Length(); i++) {
+        target->PushGroupForBlendBack(gfxContentType::COLOR_ALPHA, opacity, maskSurfaceList[i], maskTransformList[i]);
+      }
     }
   }
 
@@ -661,9 +691,11 @@ nsSVGIntegrationUtils::PaintFramesWithEffects(gfxContext& aContext,
     return;
   }
 
-  if (opacity != 1.0f || maskFrame || hasValidLayers ||
+  if (opacity != 1.0f || hasSVGMask || hasImageMask ||
       (clipPathFrame && !isTrivialClip)) {
-    target->PopGroupAndBlend();
+    for (uint32_t i = 0; i < maskSurfaceList.Length(); i++) {
+      target->PopGroupAndBlend();
+    }
   }
 
   if (aFrame->StyleDisplay()->mMixBlendMode != NS_STYLE_BLEND_NORMAL) {

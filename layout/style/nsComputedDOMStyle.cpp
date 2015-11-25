@@ -5761,9 +5761,8 @@ nsComputedDOMStyle::DoGetMask()
   }
 
   nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
-
-  if (svg->mMask)
-    val->SetURI(svg->mMask);
+  if (firstLayer.mImage.GetType() == eStyleImageType_SVGMask)
+    val->SetURI(firstLayer.mImage.GetMaskID());
   else
     val->SetIdent(eCSSKeyword_none);
 

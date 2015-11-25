@@ -561,8 +561,15 @@ nsSVGEffects::GetEffectProperties(nsIFrame *aFrame)
   } else {
     result.mClipPath = nullptr;
   }
-  result.mMask =
-    GetPaintingProperty(style->mMask, aFrame, MaskProperty());
+
+  for (uint32_t i = 0; i < style->mLayers.mImageCount; i++) {
+    if (style->mLayers.mLayers[i].mImage.GetType() == eStyleImageType_SVGMask) {
+      nsCOMPtr<nsIURI> maskRef = style->mLayers.mLayers[i].mImage.GetMaskID();
+      result.mMaskList.AppendElement(
+                         GetPaintingProperty(maskRef, aFrame, MaskProperty()));
+    }
+  }
+
   return result;
 }
 
@@ -616,12 +623,23 @@ nsSVGEffects::EffectProperties::GetClipPathFrame(bool *aOK)
 }
 
 nsSVGMaskFrame *
-nsSVGEffects::EffectProperties::GetMaskFrame(bool *aOK)
+nsSVGEffects::EffectProperties::GetMaskFrame(bool *aOK, uint32_t nIndex)
 {
-  if (!mMask)
+  MOZ_ASSERT(nIndex < mMaskList.Length());
+
+  if (mMaskList.Length() == 0)
     return nullptr;
-  return static_cast<nsSVGMaskFrame *>
-    (mMask->GetReferencedFrame(nsGkAtoms::svgMaskFrame, aOK));
+
+  nsSVGPaintingProperty* property = mMaskList[nIndex];
+  if (property) {
+    return static_cast<nsSVGMaskFrame *>
+      (mMaskList[nIndex]->GetReferencedFrame(nsGkAtoms::svgMaskFrame, aOK));
+  } else {
+    if (aOK) {
+      *aOK = true;
+    }
+    return nullptr;
+  }
 }
 
 void

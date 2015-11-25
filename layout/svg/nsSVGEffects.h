@@ -424,7 +424,7 @@ public:
 
   struct EffectProperties {
     nsSVGFilterProperty*   mFilter;
-    nsSVGPaintingProperty* mMask;
+    nsTArray<nsSVGPaintingProperty *> mMaskList;
     nsSVGPaintingProperty* mClipPath;
 
     /**
@@ -439,8 +439,9 @@ public:
      * @param aOK if a mask was specified and the designated element
      * exists but is an element of the wrong type, *aOK is set to false.
      * Otherwise *aOK is untouched.
+     * @param aIndex return the n-th element in mMaskList.
      */
-    nsSVGMaskFrame *GetMaskFrame(bool *aOK);
+    nsSVGMaskFrame *GetMaskFrame(bool *aOK, uint32_t aIndex = 0);
 
     bool HasValidFilter() {
       return mFilter && mFilter->ReferencesValidResources();

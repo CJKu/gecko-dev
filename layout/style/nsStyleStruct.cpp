@@ -1281,7 +1281,6 @@ nsStyleSVGReset::nsStyleSVGReset()
   mStopColor               = NS_RGB(0,0,0);
   mFloodColor              = NS_RGB(0,0,0);
   mLightingColor           = NS_RGB(255,255,255);
-  mMask                    = nullptr;
   mStopOpacity             = 1.0f;
   mFloodOpacity            = 1.0f;
   mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
@@ -1303,7 +1302,6 @@ nsStyleSVGReset::nsStyleSVGReset(const nsStyleSVGReset& aSource)
   mLightingColor = aSource.mLightingColor;
   mClipPath = aSource.mClipPath;
   mFilters = aSource.mFilters;
-  mMask = aSource.mMask;
   mStopOpacity = aSource.mStopOpacity;
   mFloodOpacity = aSource.mFloodOpacity;
   mDominantBaseline = aSource.mDominantBaseline;
@@ -1324,7 +1322,6 @@ nsChangeHint nsStyleSVGReset::CalcDifference(const nsStyleSVGReset& aOther) cons
   nsChangeHint hint = nsChangeHint(0);
 
   if (mClipPath != aOther.mClipPath ||
-      !EqualURIs(mMask, aOther.mMask) ||
       mFilters != aOther.mFilters) {
     NS_UpdateHint(hint, nsChangeHint_UpdateEffects);
     NS_UpdateHint(hint, nsChangeHint_RepaintFrame);
@@ -2052,6 +2049,9 @@ nsStyleImage::SetNull()
     NS_RELEASE(mImage);
   else if (mType == eStyleImageType_Element)
     free(mElementId);
+  else if (mType == eStyleImageType_SVGMask) {
+    mMaskURI->Release();
+  }
 
   mType = eStyleImageType_Null;
   mCropRect = nullptr;
@@ -2137,6 +2137,21 @@ nsStyleImage::SetElementId(const char16_t* aElementId)
   if (aElementId) {
     mElementId = NS_strdup(aElementId);
     mType = eStyleImageType_Element;
+  }
+}
+
+void
+nsStyleImage::SetMaskID(nsIURI* aURI)
+{
+  if (aURI)
+    aURI->AddRef();
+
+  if (mType != eStyleImageType_Null)
+    SetNull();
+
+  if (aURI) {
+    mMaskURI = aURI;
+    mType = eStyleImageType_SVGMask;
   }
 }
 
@@ -2254,6 +2269,7 @@ nsStyleImage::IsComplete() const
       return false;
     case eStyleImageType_Gradient:
     case eStyleImageType_Element:
+    case eStyleImageType_SVGMask:
       return true;
     case eStyleImageType_Image:
     {
@@ -2276,6 +2292,7 @@ nsStyleImage::IsLoaded() const
       return false;
     case eStyleImageType_Gradient:
     case eStyleImageType_Element:
+    case eStyleImageType_SVGMask:
       return true;
     case eStyleImageType_Image:
     {
@@ -2448,6 +2465,9 @@ nsStyleImageLayers::HasValidLayers() const
     if (!mLayers[i].mImage.IsEmpty()) {
       return true;
     }
+    /*if (mLayers[i].mMaskRef.get()) {
+      return true;
+    }*/
   }
 
   return false;
@@ -2664,6 +2684,7 @@ nsStyleImageLayers::Layer::CalcDifference(const nsStyleImageLayers::Layer& aOthe
       mBlendMode != aOther.mBlendMode ||
       mSize != aOther.mSize ||
       mImage != aOther.mImage ||
+      //!EqualURIs(mMaskRef, aOther.mMaskRef) ||
       mMaskMode != aOther.mMaskMode ||
       mComposite != aOther.mComposite) {
     hint |= nsChangeHint_RepaintFrame;

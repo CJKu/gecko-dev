@@ -53,6 +53,7 @@
 #include "mozilla/RuleNodeCacheConditions.h"
 #include "nsDeviceContext.h"
 #include "nsQueryObject.h"
+#include "nsEscape.h"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #include <malloc.h>
@@ -1224,10 +1225,20 @@ static void SetStyleImage(nsStyleContext* aStyleContext,
 
   switch (aValue.GetUnit()) {
     case eCSSUnit_Image:
-      NS_SET_IMAGE_REQUEST_WITH_DOC(aResult.SetImageData,
-                                    aStyleContext,
-                                    aValue.GetImageValue)
+    {
+      nsCOMPtr<nsIURI> uri = aValue.GetURLValue();
+      bool hasRef = false;
+      uri->GetHasRef(&hasRef);
+      if (hasRef) {
+        aResult.SetMaskID(uri);
+      } else {
+        NS_SET_IMAGE_REQUEST_WITH_DOC(aResult.SetImageData,
+                                      aStyleContext,
+                                      aValue.GetImageValue)
+      }
+
       break;
+    }
     case eCSSUnit_Function:
       if (aValue.EqualsFunction(eCSSKeyword__moz_image_rect)) {
         SetStyleImageToImageRect(aStyleContext, aValue, aResult);
@@ -6293,6 +6304,26 @@ struct BackgroundItemComputer<nsCSSValueList, nsStyleImage>
   }
 };
 
+template <>
+struct BackgroundItemComputer<nsCSSValueList, nsCOMPtr<nsIURI> >
+{
+  static void ComputeValue(nsStyleContext* aStyleContext,
+                           const nsCSSValueList* aSpecifiedValue,
+                           nsCOMPtr<nsIURI>& aComputedValue,
+                           RuleNodeCacheConditions& aConditions)
+  {
+    const nsCSSValue& item = aSpecifiedValue->mValue;
+
+    if (eCSSUnit_URL == item.GetUnit() ||
+        eCSSUnit_Image == item.GetUnit()) {
+        nsCOMPtr<nsIURI> uri = item.GetURLValue();
+        nsAutoCString reference;
+        uri->GetRef(reference);
+        aComputedValue = (reference.Length() > 0) ? uri : nullptr;
+    }
+  }
+};
+
 /* Helper function for ComputePositionValue.
  * This function computes a single PositionCoord from two nsCSSValue objects,
  * which represent an edge and an offset from that edge.
@@ -9511,24 +9542,6 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
       NS_NOTREACHED("unexpected unit");
   }
 
-  // mask: url, none, inherit
-  const nsCSSValue* maskValue = aRuleData->ValueForMaskImage();
-  if (eCSSUnit_List == maskValue->GetUnit() ||
-      eCSSUnit_ListDep == maskValue->GetUnit()) {
-    const nsCSSValue& item = maskValue->GetListValue()->mValue;
-    if (eCSSUnit_URL == item.GetUnit() ||
-        eCSSUnit_Image == item.GetUnit()) {
-      svgReset->mMask = item.GetURLValue();
-    }
-  } else if (eCSSUnit_None == maskValue->GetUnit() ||
-             eCSSUnit_Initial == maskValue->GetUnit() ||
-             eCSSUnit_Unset == maskValue->GetUnit()) {
-    svgReset->mMask = nullptr;
-  } else if (eCSSUnit_Inherit == maskValue->GetUnit()) {
-    conditions.SetUncacheable();
-    svgReset->mMask = parentSVGReset->mMask;
-  }
-
   // mask-type: enum, inherit, initial
   SetDiscrete(*aRuleData->ValueForMaskType(),
               svgReset->mMaskType,
@@ -9549,6 +9562,13 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
                     initialImage, parentSVGReset->mLayers.mImageCount,
                     svgReset->mLayers.mImageCount,
                     maxItemCount, rebuild, conditions);
+  /*SetImageLayerList(aContext, *aRuleData->ValueForMaskImage(),
+                    svgReset->mLayers.mLayers,
+                    parentSVGReset->mLayers.mLayers,
+                    &nsStyleImageLayers::Layer::mMaskRef,
+                    nsCOMPtr<nsIURI>(), parentSVGReset->mLayers.mImageCount,
+                    svgReset->mLayers.mImageCount,
+                    maxItemCount, rebuild, conditions);*/
 
   // mask-repeat: enum, inherit, initial [pair list]
   nsStyleImageLayers::Repeat initialRepeat;
