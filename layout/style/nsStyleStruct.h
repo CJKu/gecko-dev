@@ -354,6 +354,7 @@ private:
     nsStyleGradient* mGradient;
     char16_t* mElementId;
   };
+
   // This is _currently_ used only in conjunction with eStyleImageType_Image.
   nsAutoPtr<nsStyleSides> mCropRect;
 #ifdef DEBUG
@@ -532,12 +533,12 @@ struct nsStyleImageLayers {
   struct Layer;
   friend struct Layer;
   struct Layer {
-    nsStyleImage  mImage;         // [reset]
-    Position      mPosition;      // [reset] See nsStyleConsts.h
-    Size          mSize;          // [reset]
-    uint8_t       mClip;          // [reset] See nsStyleConsts.h
-    uint8_t       mOrigin;        // [reset] See nsStyleConsts.h
-    uint8_t       mAttachment;    // [reset] See nsStyleConsts.h
+    nsStyleImage     mImage;      // [reset]
+    Position         mPosition;   // [reset] See nsStyleConsts.h
+    Size             mSize;       // [reset]
+    uint8_t          mClip;       // [reset] See nsStyleConsts.h
+    uint8_t          mOrigin;     // [reset] See nsStyleConsts.h
+    uint8_t          mAttachment; // [reset] See nsStyleConsts.h
                                   // background-only property
                                   // This property is used for background layer
                                   // only. For a mask layer, it should always
@@ -3404,7 +3405,6 @@ struct nsStyleSVGReset {
   nsStyleImageLayers    mLayers;
   nsStyleClipPath mClipPath;          // [reset]
   nsTArray<nsStyleFilter> mFilters;   // [reset]
-  nsCOMPtr<nsIURI> mMask;             // [reset]
   nscolor          mStopColor;        // [reset]
   nscolor          mFloodColor;       // [reset]
   nscolor          mLightingColor;    // [reset]

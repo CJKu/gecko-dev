@@ -5853,11 +5853,14 @@ nsComputedDOMStyle::DoGetMask()
   }
 
   nsROCSSPrimitiveValue* val = new nsROCSSPrimitiveValue;
-
-  if (svg->mMask)
-    val->SetURI(svg->mMask);
-  else
+  if (firstLayer.mImage.GetType() == eStyleImageType_Image) {
+    imgRequestProxy* proxy = firstLayer.mImage.GetImageData();
+    nsCOMPtr<nsIURI> uri;
+    proxy->GetURI(getter_AddRefs(uri));
+    val->SetURI(uri);
+  } else {
     val->SetIdent(eCSSKeyword_none);
+  }
 
   return val;
 }
