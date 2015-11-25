@@ -552,7 +552,7 @@ nsSVGEffects::GetEffectProperties(nsIFrame *aFrame)
 {
   NS_ASSERTION(!aFrame->GetPrevContinuation(), "aFrame should be first continuation");
 
-  EffectProperties result;
+  EffectProperties result{nullptr, nullptr, nullptr};
   const nsStyleSVGReset *style = aFrame->StyleSVGReset();
   result.mFilter = GetOrCreateFilterProperty(aFrame);
   if (style->mClipPath.GetType() == NS_STYLE_CLIP_PATH_URL) {
@@ -561,8 +561,15 @@ nsSVGEffects::GetEffectProperties(nsIFrame *aFrame)
   } else {
     result.mClipPath = nullptr;
   }
-  result.mMask =
-    GetPaintingProperty(style->mMask, aFrame, MaskProperty());
+
+  // FIXME: Bug 1228280.
+  // Before fixing bug 1228280, we support only single svg mask as before.
+  MOZ_ASSERT(style->mLayers.mImageCount > 0);
+  nsCOMPtr<nsIURI> uri = style->mLayers.mLayers[0].mSourceURI;
+  if (uri) {
+    result.mMask = GetPaintingProperty(uri, aFrame, MaskProperty());
+  }
+
   return result;
 }
 

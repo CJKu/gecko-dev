@@ -6465,6 +6465,21 @@ struct BackgroundItemComputer<nsCSSValueList, nsStyleImage>
   }
 };
 
+template <>
+struct BackgroundItemComputer<nsCSSValueList, nsCOMPtr<nsIURI> >
+{
+  static void ComputeValue(nsStyleContext* aStyleContext,
+                           const nsCSSValueList* aSpecifiedValue,
+                           nsCOMPtr<nsIURI>& aComputedValue,
+                           RuleNodeCacheConditions& aConditions)
+  {
+    if (eCSSUnit_URL == aSpecifiedValue->mValue.GetUnit() ||
+       eCSSUnit_Image == aSpecifiedValue->mValue.GetUnit()) {
+      aComputedValue = aSpecifiedValue->mValue.GetURLValue();
+    }
+  }
+};
+
 /* Helper function for ComputePositionValue.
  * This function computes a single PositionCoord from two nsCSSValue objects,
  * which represent an edge and an offset from that edge.
@@ -6696,6 +6711,7 @@ SetImageLayerList(nsStyleContext* aStyleContext,
 
   case eCSSUnit_Initial:
   case eCSSUnit_Unset:
+  case eCSSUnit_None:
     aRebuild = true;
     aItemCount = 1;
     aLayers[0].*aResultLocation = aInitialValue;
@@ -6763,6 +6779,7 @@ SetImageLayerPairList(nsStyleContext* aStyleContext,
 
   case eCSSUnit_Initial:
   case eCSSUnit_Unset:
+  case eCSSUnit_None:
     aRebuild = true;
     aItemCount = 1;
     aLayers[0].*aResultLocation = aInitialValue;
@@ -9703,24 +9720,6 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
       NS_NOTREACHED("unexpected unit");
   }
 
-  // mask: url, none, inherit
-  const nsCSSValue* maskValue = aRuleData->ValueForMaskImage();
-  if (eCSSUnit_List == maskValue->GetUnit() ||
-      eCSSUnit_ListDep == maskValue->GetUnit()) {
-    const nsCSSValue& item = maskValue->GetListValue()->mValue;
-    if (eCSSUnit_URL == item.GetUnit() ||
-        eCSSUnit_Image == item.GetUnit()) {
-      svgReset->mMask = item.GetURLValue();
-    }
-  } else if (eCSSUnit_None == maskValue->GetUnit() ||
-             eCSSUnit_Initial == maskValue->GetUnit() ||
-             eCSSUnit_Unset == maskValue->GetUnit()) {
-    svgReset->mMask = nullptr;
-  } else if (eCSSUnit_Inherit == maskValue->GetUnit()) {
-    conditions.SetUncacheable();
-    svgReset->mMask = parentSVGReset->mMask;
-  }
-
   // mask-type: enum, inherit, initial
   SetDiscrete(*aRuleData->ValueForMaskType(),
               svgReset->mMaskType,
@@ -9739,6 +9738,13 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
                     parentSVGReset->mLayers.mLayers,
                     &nsStyleImageLayers::Layer::mImage,
                     initialImage, parentSVGReset->mLayers.mImageCount,
+                    svgReset->mLayers.mImageCount,
+                    maxItemCount, rebuild, conditions);
+  SetImageLayerList(aContext, *aRuleData->ValueForMaskImage(),
+                    svgReset->mLayers.mLayers,
+                    parentSVGReset->mLayers.mLayers,
+                    &nsStyleImageLayers::Layer::mSourceURI,
+                    nsCOMPtr<nsIURI>(), parentSVGReset->mLayers.mImageCount,
                     svgReset->mLayers.mImageCount,
                     maxItemCount, rebuild, conditions);
 
@@ -9822,6 +9828,9 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
 
     FillBackgroundList(svgReset->mLayers.mLayers,
                        &nsStyleImageLayers::Layer::mImage,
+                       svgReset->mLayers.mImageCount, fillCount);
+    FillBackgroundList(svgReset->mLayers.mLayers,
+                       &nsStyleImageLayers::Layer::mSourceURI,
                        svgReset->mLayers.mImageCount, fillCount);
     FillBackgroundList(svgReset->mLayers.mLayers,
                        &nsStyleImageLayers::Layer::mRepeat,
