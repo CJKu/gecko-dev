@@ -9496,24 +9496,6 @@ nsRuleNode::ComputeSVGResetData(void* aStartStruct,
       NS_NOTREACHED("unexpected unit");
   }
 
-  // mask: url, none, inherit
-  const nsCSSValue* maskValue = aRuleData->ValueForMaskImage();
-  if (eCSSUnit_List == maskValue->GetUnit() ||
-      eCSSUnit_ListDep == maskValue->GetUnit()) {
-    const nsCSSValue& item = maskValue->GetListValue()->mValue;
-    if (eCSSUnit_URL == item.GetUnit() ||
-        eCSSUnit_Image == item.GetUnit()) {
-      svgReset->mMask = item.GetURLValue();
-    }
-  } else if (eCSSUnit_None == maskValue->GetUnit() ||
-             eCSSUnit_Initial == maskValue->GetUnit() ||
-             eCSSUnit_Unset == maskValue->GetUnit()) {
-    svgReset->mMask = nullptr;
-  } else if (eCSSUnit_Inherit == maskValue->GetUnit()) {
-    conditions.SetUncacheable();
-    svgReset->mMask = parentSVGReset->mMask;
-  }
-
   // mask-type: enum, inherit, initial
   SetDiscrete(*aRuleData->ValueForMaskType(),
               svgReset->mMaskType,

@@ -552,7 +552,7 @@ nsSVGEffects::GetEffectProperties(nsIFrame *aFrame)
 {
   NS_ASSERTION(!aFrame->GetPrevContinuation(), "aFrame should be first continuation");
 
-  EffectProperties result;
+  EffectProperties result{nullptr, nullptr, nullptr};
   const nsStyleSVGReset *style = aFrame->StyleSVGReset();
   result.mFilter = GetOrCreateFilterProperty(aFrame);
   if (style->mClipPath.GetType() == NS_STYLE_CLIP_PATH_URL) {
@@ -561,8 +561,20 @@ nsSVGEffects::GetEffectProperties(nsIFrame *aFrame)
   } else {
     result.mClipPath = nullptr;
   }
-  result.mMask =
-    GetPaintingProperty(style->mMask, aFrame, MaskProperty());
+
+  for (uint32_t i = 0; i < style->mLayers.mImageCount; i++) {
+    if (style->mLayers.mLayers[i].mImage.GetType() == eStyleImageType_Image) {
+      imgRequestProxy* proxy = style->mLayers.mLayers[i].mImage.GetImageData();
+      nsCOMPtr<nsIURI> uri;
+      proxy->GetURI(getter_AddRefs(uri));
+      result.mMask = GetPaintingProperty(uri, aFrame, MaskProperty());
+      // FIXME: Bug 1228280.
+      // Single MaskProperty is not enough since we might have multiple SVG
+      // masks.
+      break;
+    }
+  }
+
   return result;
 }
 

@@ -1281,7 +1281,6 @@ nsStyleSVGReset::nsStyleSVGReset()
   mStopColor               = NS_RGB(0,0,0);
   mFloodColor              = NS_RGB(0,0,0);
   mLightingColor           = NS_RGB(255,255,255);
-  mMask                    = nullptr;
   mStopOpacity             = 1.0f;
   mFloodOpacity            = 1.0f;
   mDominantBaseline        = NS_STYLE_DOMINANT_BASELINE_AUTO;
@@ -1303,7 +1302,6 @@ nsStyleSVGReset::nsStyleSVGReset(const nsStyleSVGReset& aSource)
   mLightingColor = aSource.mLightingColor;
   mClipPath = aSource.mClipPath;
   mFilters = aSource.mFilters;
-  mMask = aSource.mMask;
   mStopOpacity = aSource.mStopOpacity;
   mFloodOpacity = aSource.mFloodOpacity;
   mDominantBaseline = aSource.mDominantBaseline;
@@ -1324,7 +1322,6 @@ nsChangeHint nsStyleSVGReset::CalcDifference(const nsStyleSVGReset& aOther) cons
   nsChangeHint hint = nsChangeHint(0);
 
   if (mClipPath != aOther.mClipPath ||
-      !EqualURIs(mMask, aOther.mMask) ||
       mFilters != aOther.mFilters) {
     NS_UpdateHint(hint, nsChangeHint_UpdateEffects);
     NS_UpdateHint(hint, nsChangeHint_RepaintFrame);
