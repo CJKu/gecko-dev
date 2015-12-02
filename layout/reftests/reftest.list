@@ -250,6 +250,9 @@ include outline/reftest.list
 # object/
 include object/reftest.list
 
+# mask/
+include mask/reftest.list
+
 # ogg-video/
 skip-if(!B2G&&browserIsRemote) include ogg-video/reftest.list
 

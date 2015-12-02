@@ -1,0 +1,54 @@
+<!DOCTYPE HTML>
+<title>mask-composite-ref</title>
+<style type="text/css">
+
+div {
+  position: absolute;
+  margin: 0px;
+  padding: 0px;
+  width: 100px;
+  height: 100px;
+}
+
+div.add {
+  top: 10px;
+  left: 10px;
+  background-color: blue;
+}
+
+div.substract {
+  top: 10px;
+  left: 120px;
+  background-image: url(mask-composite.svg);
+}
+
+div.substract2 {
+  top: 10px;
+  left: 230px;
+  background-image: url(mask-composite-2.svg);
+}
+
+div.intersect {
+  top: 10px;
+  left: 340px;
+}
+
+div.intersect {
+  top: 120px;
+  left: 10px;
+  background-image: url(mask-composite.svg);
+}
+
+div.exclude {
+  top: 120px;
+  left: 120px;
+  background-color: blue;
+}
+
+</style>
+
+<div class="add"></div>
+<div class="substract"></div>
+<div class="substract2"></div>
+<div class="intersect"></div>
+<div class="exclude"></div>
