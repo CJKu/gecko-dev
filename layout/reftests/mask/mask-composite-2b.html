@@ -1,0 +1,45 @@
+<!DOCTYPE HTML>
+<title>mask-composite-2; raster image</title>
+<style type="text/css">
+
+div {
+  background-color: blue;
+  position: absolute;
+  margin: 0px;
+  padding: 0px;
+  width: 100px;
+  height: 100px;
+  top:10px;
+  mask-image: url(blue-100x50-transparent-100X50.png), url(transparent-100x50-blue-100X50.png);
+}
+
+div.add {
+  left: 10px;
+  -webkit-mask-composite: source-over;
+  mask-composite: add;
+}
+
+div.substract {
+  left: 120px;
+  -webkit-mask-composite: source-out;
+  mask-composite: substract;
+}
+
+div.intersect {
+  left: 230px;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+div.exclude {
+  left: 340px;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+</style>
+
+<div class="add"></div>
+<div class="substract"></div>
+<div class="intersect"></div>
+<div class="exclude"></div>
