@@ -674,7 +674,9 @@ inDOMUtils::GetSubpropertiesForCSSProperty(const nsAString& aProperty,
     return NS_OK;
   }
 
-  if (!nsCSSProps::IsShorthand(propertyID)) {
+  if (!nsCSSProps::IsShorthand(propertyID) ||
+      (propertyID == eCSSProperty_mask &&
+       !nsCSSProps::IsEnabled(eCSSProperty_mask_image))) {
     *aValues = static_cast<char16_t**>(moz_xmalloc(sizeof(char16_t*)));
     (*aValues)[0] = ToNewUnicode(nsCSSProps::GetStringValue(propertyID));
     *aLength = 1;
@@ -726,6 +728,12 @@ PropertySupportsVariant(nsCSSProperty aPropertyID, uint32_t aVariant)
     // border-image, it can't actually parse an image.
     if (aPropertyID == eCSSProperty_border) {
       return (aVariant & (VARIANT_COLOR | VARIANT_LENGTH)) != 0;
+    }
+
+    // When mask is been seen as longhand, it accepts only VARIANT_URL value.
+    if (aPropertyID == eCSSProperty_mask &&
+        !nsCSSProps::IsEnabled(eCSSProperty_mask_image)) {
+      return (aVariant & VARIANT_URL) != 0;
     }
 
     for (const nsCSSProperty* props = nsCSSProps::SubpropertyEntryFor(aPropertyID);

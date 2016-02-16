@@ -144,6 +144,8 @@ Declaration::RemoveProperty(nsCSSProperty aProperty)
   ExpandTo(&data);
   MOZ_ASSERT(!mData && !mImportantData, "Expand didn't null things out");
 
+  // Actual mask-reference data is stored in mask-image when we see mask
+  // as a longhand.
   if (nsCSSProps::IsShorthand(aProperty)) {
     CSSPROPS_FOR_SHORTHAND_SUBPROPERTIES(p, aProperty,
                                          nsCSSProps::eEnabledForAllContent) {
@@ -658,8 +660,12 @@ Declaration::GetValue(nsCSSProperty aProperty, nsAString& aValue,
       break;
     }
     case eCSSProperty_mask: {
-      GetImageLayerValue(data, aValue, aSerialization,
-                         nsStyleImageLayers::kMaskLayerTable);
+      if (!nsCSSProps::IsEnabled(eCSSProperty_mask_image)) {
+        AppendValueToString(eCSSProperty_mask_image, aValue, aSerialization);
+      } else {
+        GetImageLayerValue(data, aValue, aSerialization,
+                           nsStyleImageLayers::kMaskLayerTable);
+      }
       break;
     }
     case eCSSProperty_font: {
@@ -1452,7 +1458,8 @@ Declaration::ToString(nsAString& aString) const
       continue;
     }
 
-    if (!nsCSSProps::IsEnabled(property, nsCSSProps::eEnabledForAllContent)) {
+    if (!nsCSSProps::IsEnabled(property, nsCSSProps::eEnabledForAllContent) &&
+        property != eCSSProperty_mask_image) {
       continue;
     }
     bool doneProperty = false;
@@ -1573,6 +1580,13 @@ Declaration::GetNthProperty(uint32_t aIndex, nsAString& aReturn) const
       GetCustomPropertyNameAt(aIndex, aReturn);
       return true;
     }
+
+    if (property == eCSSProperty_mask_image &&
+        !nsCSSProps::IsEnabled(eCSSProperty_mask_image)) {
+      AppendASCIItoUTF16(nsCSSProps::GetStringValue(eCSSProperty_mask), aReturn);
+      return true;
+    }
+
     if (0 <= property) {
       AppendASCIItoUTF16(nsCSSProps::GetStringValue(property), aReturn);
       return true;
