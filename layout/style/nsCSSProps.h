@@ -645,6 +645,7 @@ public:
     {
       return true;
     }
+
     return false;
   }
 
@@ -658,7 +659,8 @@ public:
   for (const nsCSSProperty *it_ = nsCSSProps::SubpropertyEntryFor(prop_),     \
                             es_ = (nsCSSProperty) (enabledstate_);            \
        *it_ != eCSSProperty_UNKNOWN; ++it_)                                   \
-    if (nsCSSProps::IsEnabled(*it_, (nsCSSProps::EnabledState) es_))
+    if (nsCSSProps::IsEnabled(*it_, (nsCSSProps::EnabledState) es_) ||        \
+        *it_ == eCSSProperty_mask_image)
 
   // Keyword/Enum value tables
   static const KTableEntry kAnimationDirectionKTable[];

@@ -883,6 +883,7 @@ protected:
   bool ParseImageLayerRepeat(nsCSSProperty aPropID);
   bool ParseImageLayerRepeatValues(nsCSSValuePair& aValue);
   bool ParseImageLayerPosition(nsCSSProperty aPropID);
+  bool ParseMaskAsLonghand();
 
   // ParseBoxPositionValues parses the CSS 2.1 background-position syntax,
   // which is still used by some properties. See ParsePositionValue
@@ -11445,7 +11446,11 @@ CSSParserImpl::ParsePropertyByFunction(nsCSSProperty aPropID)
   case eCSSProperty_scroll_snap_type:
     return ParseScrollSnapType();
   case eCSSProperty_mask:
-    return ParseImageLayers(nsStyleImageLayers::kMaskLayerTable);
+    if (nsCSSProps::IsEnabled(eCSSProperty_mask_image)) {
+      return ParseImageLayers(nsStyleImageLayers::kMaskLayerTable);
+    } else {
+      return ParseMaskAsLonghand();
+    }
   case eCSSProperty_mask_repeat:
     return ParseImageLayerRepeat(eCSSProperty_mask_repeat);
   case eCSSProperty_mask_position:
@@ -11706,6 +11711,27 @@ BoxPositionMaskToCSSValue(int32_t aMask, bool isX)
   }
 
   return nsCSSValue(val, eCSSUnit_Enumerated);
+}
+
+bool
+CSSParserImpl::ParseMaskAsLonghand()
+{
+  nsCSSValue image;
+
+  // Check first for inherit/initial/unset.
+  if (ParseSingleTokenVariant(image, VARIANT_INHERIT, nullptr)) {
+    AppendValue(eCSSProperty_mask_image, image);
+    return true;
+  }
+
+  nsCSSValueList* imageList = image.SetListValue();
+  if (ParseVariant(imageList->mValue, VARIANT_URL | VARIANT_NONE, nullptr) !=
+        CSSParseResult::Ok) {
+    return false;
+  }
+
+  AppendValue(eCSSProperty_mask_image, image);
+  return true;
 }
 
 bool
