@@ -48,6 +48,11 @@ for (var idx in gLonghandProperties) {
 }
 for (var idx in gShorthandProperties) {
   var prop = gShorthandProperties[idx];
+
+  if (prop.name.match(/.*mask.*/) &&
+      !IsCSSPropertyPrefEnabled("layout.css.mask-as-shorthand.enabled")) {
+    continue;
+  }
   if (prop.pref && !IsCSSPropertyPrefEnabled(prop.pref)) {
     continue;
   }
@@ -86,6 +91,7 @@ for (var idx in gShorthandPropertiesLikeLonghand) {
  * Test that all shorthand properties have a subproperty list and all
  * longhand properties do not.
  */
+
 for (var prop in gCSSProperties) {
   var entry = gCSSProperties[prop];
   if (entry.pref && !IsCSSPropertyPrefEnabled(entry.pref)) {
