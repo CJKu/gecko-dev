@@ -4087,7 +4087,7 @@ CSS_PROP_SVGRESET(
     MaskClip,
     CSS_PROPERTY_PARSE_VALUE_LIST |
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     VARIANT_KEYWORD, // used by list parsing
     kImageLayerOriginKTable,
     CSS_PROP_NO_OFFSET,
@@ -4098,7 +4098,7 @@ CSS_PROP_SVGRESET(
     MaskComposite,
     CSS_PROPERTY_PARSE_VALUE_LIST |
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     VARIANT_KEYWORD, // used by list parsing
     kImageLayerCompositeKTable,
     CSS_PROP_NO_OFFSET,
@@ -4111,7 +4111,7 @@ CSS_PROP_SVGRESET(
         CSS_PROPERTY_CREATES_STACKING_CONTEXT |
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
         CSS_PROPERTY_START_IMAGE_LOADS,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     VARIANT_IMAGE, // used by list parsing
     nullptr,
     CSS_PROP_NO_OFFSET,
@@ -4122,7 +4122,7 @@ CSS_PROP_SVGRESET(
     MaskMode,
     CSS_PROPERTY_PARSE_VALUE_LIST |
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     VARIANT_KEYWORD, // used by list parsing
     kImageLayerModeKTable,
     CSS_PROP_NO_OFFSET,
@@ -4133,7 +4133,7 @@ CSS_PROP_SVGRESET(
     MaskOrigin,
     CSS_PROPERTY_PARSE_VALUE_LIST |
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     VARIANT_KEYWORD, // used by list parsing
     kImageLayerOriginKTable,
     CSS_PROP_NO_OFFSET,
@@ -4144,7 +4144,7 @@ CSS_PROP_SVGRESET(
     MaskRepeat,
     CSS_PROPERTY_PARSE_FUNCTION |
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     VARIANT_KEYWORD, // used by list parsing
     kImageLayerRepeatKTable,
     CSS_PROP_NO_OFFSET,
@@ -4156,7 +4156,7 @@ CSS_PROP_SVGRESET(
     CSS_PROPERTY_PARSE_FUNCTION |
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
         CSS_PROPERTY_STORES_CALC,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     0,
     kImageLayerPositionKTable,
     CSS_PROP_NO_OFFSET,
@@ -4169,7 +4169,7 @@ CSS_PROP_SVGRESET(
         CSS_PROPERTY_VALUE_LIST_USES_COMMAS |
         CSS_PROPERTY_VALUE_NONNEGATIVE |
         CSS_PROPERTY_STORES_CALC,
-    "",
+    "layout.css.mask-as-shorthand.enabled",
     0,
     kImageLayerSizeKTable,
     CSS_PROP_NO_OFFSET,

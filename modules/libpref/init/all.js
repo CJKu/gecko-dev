@@ -2290,6 +2290,7 @@ pref("layout.css.devPixelsPerPx", "-1.0");
 
 // Is support for CSS Masking features enabled?
 pref("layout.css.masking.enabled", true);
+pref("layout.css.mask-as-shorthand.enabled", false);
 
 // Is support for mix-blend-mode enabled?
 pref("layout.css.mix-blend-mode.enabled", true);
