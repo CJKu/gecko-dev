@@ -494,6 +494,7 @@ inDOMUtils::IsInheritedProperty(const nsAString &aPropertyName, bool *_retval)
 }
 
 extern const char* const kCSSRawProperties[];
+extern nsCSSProperty gAliases[];
 
 NS_IMETHODIMP
 inDOMUtils::GetCSSPropertyNames(uint32_t aFlags, uint32_t* aCount,
@@ -548,6 +549,9 @@ inDOMUtils::GetCSSPropertyNames(uint32_t aFlags, uint32_t* aCount,
 
   if (aFlags & INCLUDE_ALIASES) {
     for (prop = eCSSProperty_COUNT; prop < eCSSProperty_COUNT_with_aliases; ++prop) {
+      if (!nsCSSProps::IsEnabled(gAliases[prop - eCSSProperty_COUNT])) {
+        continue;
+      }
       DO_PROP(prop);
     }
   }

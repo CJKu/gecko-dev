@@ -154,8 +154,11 @@ enum {
   eCSSAliasCount = eCSSProperty_COUNT_with_aliases - eCSSProperty_COUNT
 };
 
+// required to make the symbol external, so that inDOMUtils.cpp can link with it
+extern nsCSSProperty gAliases[];
+
 // The names are in kCSSRawProperties.
-static nsCSSProperty gAliases[eCSSAliasCount != 0 ? eCSSAliasCount : 1] = {
+nsCSSProperty gAliases[eCSSAliasCount != 0 ? eCSSAliasCount : 1] = {
 #define CSS_PROP_ALIAS(aliasname_, propid_, aliasmethod_, pref_)  \
   eCSSProperty_##propid_ ,
 #include "nsCSSPropAliasList.h"
