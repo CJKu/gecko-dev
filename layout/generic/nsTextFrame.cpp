@@ -6618,7 +6618,9 @@ nsTextFrame::PaintText(const PaintTextParams& aParams,
     foregroundColor = gfxColor.ToABGR();
   }
 
-  nscolor textStrokeColor = textPaintStyle.GetWebkitTextStrokeColor();
+  nscolor textStrokeColor = aGenerateTextMask
+                            ? NS_RGBA(0, 0, 0, 255)
+                            : textPaintStyle.GetWebkitTextStrokeColor();
   if (aOpacity != 1.0f) {
     gfx::Color gfxColor = gfx::Color::FromABGR(textStrokeColor);
     gfxColor.a *= aOpacity;
