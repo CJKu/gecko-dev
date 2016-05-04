@@ -5931,7 +5931,8 @@ bool
 nsTextFrame::PaintTextWithSelectionColors(
     const PaintTextSelectionParams& aParams,
     SelectionDetails* aDetails, SelectionType* aAllTypes,
-    const nsCharClipDisplayItem::ClipEdges& aClipEdges)
+    const nsCharClipDisplayItem::ClipEdges& aClipEdges,
+    bool aGenerateTextMask, bool aPaintSelecitonBGOnly)
 {
   const gfxTextRun::Range& contentRange = aParams.contentRange;
 
@@ -5992,7 +5993,7 @@ nsTextFrame::PaintTextWithSelectionColors(
   SelectionType type;
   TextRangeStyle rangeStyle;
   // Draw background colors
-  if (anyBackgrounds) {
+  if (anyBackgrounds && (!aGenerateTextMask || aPaintSelecitonBGOnly)) {
     int32_t appUnitsPerDevPixel =
       aParams.textPaintStyle->PresContext()->AppUnitsPerDevPixel();
     SelectionIterator iterator(prevailingSelections, contentRange,
@@ -6024,6 +6025,10 @@ nsTextFrame::PaintTextWithSelectionColors(
     }
   }
 
+  if (aPaintSelecitonBGOnly) {
+    return true;
+  }
+
   gfxFloat advance;
   DrawTextParams params(aParams.context);
   params.dirtyRect = aParams.dirtyRect;
@@ -6045,8 +6050,13 @@ nsTextFrame::PaintTextWithSelectionColors(
   while (iterator.GetNextSegment(&iOffset, &range, &hyphenWidth,
                                  &type, &rangeStyle)) {
     nscolor foreground, background;
-    GetSelectionTextColors(type, *aParams.textPaintStyle, rangeStyle,
-                           &foreground, &background);
+    if (aGenerateTextMask) {
+      foreground = NS_RGBA(0, 0, 0, 255);
+    } else {
+      GetSelectionTextColors(type, *aParams.textPaintStyle, rangeStyle,
+                             &foreground, &background);
+    }
+
     gfxPoint textBaselinePt = vertical ?
       gfxPoint(aParams.textBaselinePt.x, aParams.framePt.y + iOffset) :
       gfxPoint(aParams.framePt.x + iOffset, aParams.textBaselinePt.y);
@@ -6176,7 +6186,8 @@ nsTextFrame::PaintTextSelectionDecorations(
 bool
 nsTextFrame::PaintTextWithSelection(
     const PaintTextSelectionParams& aParams,
-    const nsCharClipDisplayItem::ClipEdges& aClipEdges)
+    const nsCharClipDisplayItem::ClipEdges& aClipEdges,
+    bool aGenerateTextMask, bool aPaintSelecitonBGOnly)
 {
   NS_ASSERTION(GetContent()->IsSelectionDescendant(), "wrong paint path");
 
@@ -6186,7 +6197,8 @@ nsTextFrame::PaintTextWithSelection(
   }
 
   SelectionType allTypes;
-  if (!PaintTextWithSelectionColors(aParams, details, &allTypes, aClipEdges)) {
+  if (!PaintTextWithSelectionColors(aParams, details, &allTypes, aClipEdges,
+                                    aGenerateTextMask, aPaintSelecitonBGOnly)) {
     DestroySelectionDetails(details);
     return false;
   }
@@ -6480,8 +6492,7 @@ nsTextFrame::PaintShadows(nsCSSShadowArray* aShadow,
 }
 
 static bool
-ShouldDrawSelection(const nsIFrame* aFrame,
-                    const nsTextFrame::PaintTextParams& aParams)
+ShouldDrawSelection(const nsIFrame* aFrame)
 {
   // Normal text-with-selection rendering sequence is:
   //   * Paint background > Paint text-selection-color > Paint text
@@ -6492,12 +6503,8 @@ ShouldDrawSelection(const nsIFrame* aFrame,
   // If there is a parent frame has background-clip:text style,
   // text-selection-color should be drawn with the background of that parent
   // frame, so we should not draw it again while painting text frames.
-  //
-  // "aParams.callbacks != nullptr": it means we are currently painting
-  // background. We should paint text-selection-color.
-  // "aParams.callbacks == nullptr": it means we are currently painting text
-  // frame itself. We should not paint text-selection-color.
-  if (!aFrame || aParams.callbacks) {
+
+  if (!aFrame) {
     return true;
   }
 
@@ -6509,7 +6516,7 @@ ShouldDrawSelection(const nsIFrame* aFrame,
     }
   }
 
-  return ShouldDrawSelection(aFrame->GetParent(), aParams);
+  return ShouldDrawSelection(aFrame->GetParent());
 }
 
 void
@@ -6575,9 +6582,13 @@ nsTextFrame::PaintText(const PaintTextParams& aParams,
   nsTextPaintStyle textPaintStyle(this);
   textPaintStyle.SetResolveColors(!aParams.callbacks);
 
+  // Only paint the background color of selection text.
+  bool paintSelecitonBGOnly = aGenerateTextMask &&
+                              (aParams.context->GetDrawTarget()->GetFormat() !=
+                               SurfaceFormat::A8);
   // Fork off to the (slower) paint-with-selection path if necessary.
   if (aItem.mIsFrameSelected.value() &&
-      ShouldDrawSelection(this->GetParent(), aParams)) {
+      (aGenerateTextMask || ShouldDrawSelection(this->GetParent()))) {
     MOZ_ASSERT(aOpacity == 1.0f, "We don't support opacity with selections!");
     gfxSkipCharsIterator tmp(provider.GetStart());
     Range contentRange(
@@ -6588,9 +6599,14 @@ nsTextFrame::PaintText(const PaintTextParams& aParams,
     params.provider = &provider;
     params.contentRange = contentRange;
     params.textPaintStyle = &textPaintStyle;
-    if (PaintTextWithSelection(params, clipEdges)) {
+    if (PaintTextWithSelection(params, clipEdges, aGenerateTextMask,
+                               paintSelecitonBGOnly)) {
       return;
     }
+  }
+
+  if (paintSelecitonBGOnly) {
+    return;
   }
 
   nscolor foregroundColor = aGenerateTextMask

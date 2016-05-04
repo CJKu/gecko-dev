@@ -443,7 +443,9 @@ public:
   // Return false if the text was not painted and we should continue with
   // the fast path.
   bool PaintTextWithSelection(const PaintTextSelectionParams& aParams,
-                              const nsCharClipDisplayItem::ClipEdges& aClipEdges);
+                              const nsCharClipDisplayItem::ClipEdges& aClipEdges,
+                              bool aGenerateTextMask,
+                              bool aPaintSelecitonBGOnly);
   // helper: paint text with foreground and background colors determined
   // by selection(s). Also computes a mask of all selection types applying to
   // our text, returned in aAllTypes.
@@ -452,7 +454,9 @@ public:
   bool PaintTextWithSelectionColors(const PaintTextSelectionParams& aParams,
                                     SelectionDetails* aDetails,
                                     SelectionType* aAllTypes,
-                                    const nsCharClipDisplayItem::ClipEdges& aClipEdges);
+                                    const nsCharClipDisplayItem::ClipEdges& aClipEdges,
+                                    bool aGenerateTextMask,
+                                    bool aPaintSelecitonBGOnly);
   // helper: paint text decorations for text selected by aSelectionType
   void PaintTextSelectionDecorations(const PaintTextSelectionParams& aParams,
                                      SelectionDetails* aDetails,
