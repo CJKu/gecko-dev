@@ -437,7 +437,8 @@ public:
   // context.
   void PaintText(const PaintTextParams& aParams,
                  const nsCharClipDisplayItem& aItem,
-                 float aOpacity = 1.0f);
+                 float aOpacity = 1.0f,
+                 bool aGenerateTextMask = false);
   // helper: paint text frame when we're impacted by at least one selection.
   // Return false if the text was not painted and we should continue with
   // the fast path.

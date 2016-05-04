@@ -4798,11 +4798,8 @@ nsDisplayText::Paint(nsDisplayListBuilder* aBuilder,
 
   params.dirtyRect = extraVisible;
   nsTextFrame::DrawPathCallbacks callbacks;
-  if (aBuilder->IsForGenerateGlyphMask()) {
-    params.callbacks = &callbacks;
-  }
 
-  f->PaintText(params, *this, mOpacity);
+  f->PaintText(params, *this, mOpacity, aBuilder->IsForGenerateGlyphMask());
 }
 
 void
@@ -6518,7 +6515,8 @@ ShouldDrawSelection(const nsIFrame* aFrame,
 void
 nsTextFrame::PaintText(const PaintTextParams& aParams,
                        const nsCharClipDisplayItem& aItem,
-                       float aOpacity /* = 1.0f */)
+                       float aOpacity /* = 1.0f */,
+                       bool aGenerateTextMask /* = false */)
 {
   // Don't pass in the rendering context here, because we need a
   // *reference* context and rendering context might have some transform
@@ -6595,7 +6593,9 @@ nsTextFrame::PaintText(const PaintTextParams& aParams,
     }
   }
 
-  nscolor foregroundColor = textPaintStyle.GetTextColor();
+  nscolor foregroundColor = aGenerateTextMask
+                            ? NS_RGBA(0, 0, 0, 255)
+                            : textPaintStyle.GetTextColor();
   if (aOpacity != 1.0f) {
     gfx::Color gfxColor = gfx::Color::FromABGR(foregroundColor);
     gfxColor.a *= aOpacity;
