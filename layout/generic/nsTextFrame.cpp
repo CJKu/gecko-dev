@@ -98,16 +98,6 @@ using namespace mozilla;
 using namespace mozilla::dom;
 using namespace mozilla::gfx;
 
-void
-nsTextFrame::DrawPathCallbacks::NotifySelectionBackgroundNeedsFill(
-                                                    const Rect& aBackgroundRect,
-                                                    nscolor aColor,
-                                                    DrawTarget& aDrawTarget)
-{
-  ColorPattern color(ToDeviceColor(aColor));
-  aDrawTarget.FillRect(aBackgroundRect, color);
-}
-
 struct TabWidth {
   TabWidth(uint32_t aOffset, uint32_t aWidth)
     : mOffset(aOffset), mWidth(float(aWidth))
@@ -4795,9 +4785,7 @@ nsDisplayText::Paint(nsDisplayListBuilder* aBuilder,
   }
   nsTextFrame::PaintTextParams params(aCtx->ThebesContext());
   params.framePt = gfxPoint(framePt.x, framePt.y);
-
   params.dirtyRect = extraVisible;
-  nsTextFrame::DrawPathCallbacks callbacks;
 
   f->PaintText(params, *this, mOpacity, aBuilder->IsForGenerateGlyphMask());
 }
@@ -6065,7 +6053,7 @@ nsTextFrame::PaintTextWithSelectionColors(
     // or from the ::-moz-selection pseudo-class if specified there
     nsCSSShadowArray* shadow = textStyle->GetTextShadow();
     GetSelectionTextShadow(this, type, *aParams.textPaintStyle, &shadow);
-    if (shadow && !aParams.callbacks) {
+    if (shadow) {
       nscoord startEdge = iOffset;
       if (mTextRun->IsInlineReversed()) {
         startEdge -= hyphenWidth +
