@@ -1890,7 +1890,7 @@ nsFrame::DisplayBorderBackgroundOutline(nsDisplayListBuilder*   aBuilder,
     return;
   }
 
-  if (aBuilder->IsForGenerateGlyphPath()) {
+  if (aBuilder->IsForGenerateGlyphMask()) {
     return;
   }
 
@@ -2509,7 +2509,7 @@ nsIFrame::BuildDisplayListForStackingContext(nsDisplayListBuilder* aBuilder,
     buildingDisplayList.SetReferenceFrameAndCurrentOffset(outerReferenceFrame,
       GetOffsetToCrossDoc(outerReferenceFrame));
 
-    if (!aBuilder->IsForGenerateGlyphPath()) {
+    if (!aBuilder->IsForGenerateGlyphMask()) {
       nsDisplayTransform *transformItem =
         new (aBuilder) nsDisplayTransform(aBuilder, this, &resultList, dirtyRect);
       resultList.AppendNewToTop(transformItem);
@@ -2603,7 +2603,7 @@ nsIFrame::BuildDisplayListForChild(nsDisplayListBuilder*   aBuilder,
   if (aBuilder->IsBackgroundOnly())
     return;
 
-  if (aBuilder->IsForGenerateGlyphPath()) {
+  if (aBuilder->IsForGenerateGlyphMask()) {
     if (nsGkAtoms::textFrame != aChild->GetType() && aChild->IsLeaf()) {
       return;
     }
