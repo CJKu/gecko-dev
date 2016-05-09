@@ -6642,6 +6642,7 @@ nsTextFrame::PaintText(const PaintTextParams& aParams,
   params.drawSoftHyphen = (GetStateBits() & TEXT_HYPHEN_BREAK) != 0;
   params.contextPaint = aParams.contextPaint;
   params.callbacks = aParams.callbacks;
+  aParams.context->SetAntialiasMode(AntialiasMode::SUBPIXEL);
   DrawText(range, textBaselinePt, params);
 }
 
