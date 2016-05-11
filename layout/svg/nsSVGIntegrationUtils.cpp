@@ -443,6 +443,16 @@ static void
 
   gfxContext& ctx = aParams.ctx;
 
+  // There is only one mask. And that mask is a SVG mask.
+  if ((svgMaskFrames.Length() == 1) && svgMaskFrames[0]) {
+    aOutMaskSurface =
+      svgMaskFrames[0]->GetMaskForMaskedFrame(&ctx, aParams.frame,
+                                              cssPxToDevPxMatrix, aOpacity,
+                                              &aOutMaskTransform,
+                                              svgReset->mMask.mLayers[0].mMaskMode);
+    return;
+  }
+
   // Mask composition result on CoreGraphic::A8 surface is not correct
   // when mask-mode is not add(source over). Switch to skia when CG backend
   // detected.
