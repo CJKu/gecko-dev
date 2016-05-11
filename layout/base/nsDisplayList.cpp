@@ -6666,10 +6666,12 @@ nsDisplaySVGEffects::PaintAsLayer(nsDisplayListBuilder* aBuilder,
                                   LayerManager* aManager)
 {
   nsRect borderArea = nsRect(ToReferenceFrame(), mFrame->GetSize());
-  nsSVGIntegrationUtils::PaintFramesWithEffects(*aCtx->ThebesContext(), mFrame,
-                                                mVisibleRect,
-                                                borderArea,
-                                                aBuilder, aManager);
+  nsSVGIntegrationUtils::PaintFramesParams params(*aCtx->ThebesContext(),
+                                                  mFrame,  mVisibleRect,
+                                                  borderArea, aBuilder,
+                                                  aManager);
+
+  nsSVGIntegrationUtils::PaintFramesWithEffects(params);
 }
 
 LayerState
