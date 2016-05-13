@@ -7140,7 +7140,7 @@ dnl ========================================================
 dnl mask as short hand property
 dnl ========================================================
 dnl Uncommenting the next line would enable mask-as-shorthand feature.
-dnl MOZ_ENABLE_MASK_AS_SHORTHAND=1
+MOZ_ENABLE_MASK_AS_SHORTHAND=1
 if test "$MOZ_ENABLE_MASK_AS_SHORTHAND"; then
   AC_DEFINE(MOZ_ENABLE_MASK_AS_SHORTHAND)
 fi
