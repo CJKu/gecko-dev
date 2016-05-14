@@ -207,7 +207,7 @@ nsSVGMaskFrame::GetMaskForMaskedFrame(gfxContext* aContext,
                                       float aOpacity,
                                       Matrix* aMaskTransform,
                                       uint8_t aMaskOp)
-{
+{ 
   // If the flag is set when we get here, it means this mask frame
   // has already been used painting the current mask, and the document
   // has a mask reference loop.
